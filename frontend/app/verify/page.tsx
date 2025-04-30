@@ -3,14 +3,13 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { useRouter } from 'next/navigation'
-import { getTemporaryToken, saveToken, clearTemporaryToken } from '../lib/auth'
 
 export default function VerifyPage() {
   const [code, setCode] = useState('')
   const [clientError, setClientError] = useState<string | null>(null)
   const [backendError, setBackendError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [timer, setTimer] = useState(300) 
+  const [timer, setTimer] = useState(60)
 
   const router = useRouter()
 
@@ -23,55 +22,47 @@ export default function VerifyPage() {
   }, [])
 
   const handleVerify = async () => {
+    setLoading(true)
     setClientError(null)
     setBackendError(null)
 
     if (!code.trim()) {
       setClientError('Введите код подтверждения')
+      setLoading(false)
       return
     }
 
-    setLoading(true)
-
     try {
-      const temporaryToken = getTemporaryToken()
-      const res = await axios.post(
+      await axios.post(
         'http://localhost:3000/auth/verify',
         { code },
-        { headers: { Authorization: `Bearer ${temporaryToken}` } }
+        { withCredentials: true }
       )
-
-      saveToken(res.data.accessToken)
-      clearTemporaryToken()
       router.push('/dashboard')
     } catch (err: any) {
-      if (err.response?.data?.message) {
-        setBackendError(err.response.data.message)
-      } else {
-        setBackendError('Произошла ошибка при проверке кода')
-      }
+      setBackendError(
+        err.response?.data?.message || 'Ошибка при подтверждении. Попробуйте снова.'
+      )
     } finally {
       setLoading(false)
     }
   }
 
   const handleResend = async () => {
-    const temporaryToken = getTemporaryToken()
     try {
       await axios.post(
         'http://localhost:3000/auth/resend-code',
         {},
-        {
-          headers: { Authorization: `Bearer ${temporaryToken}` },
-        }
+        { withCredentials: true }
       )
       setTimer(300)
       alert('Код повторно отправлен на почту.')
     } catch (err) {
+
+      console.log(err)
       alert('Не удалось повторно отправить код. Попробуйте позже.')
     }
   }
-  
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60)
@@ -89,7 +80,7 @@ export default function VerifyPage() {
           value={code}
           onChange={(e) => setCode(e.target.value)}
           placeholder="Введите код из письма"
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black placeholder:text-black"
         />
 
         {clientError && <p className="text-sm text-red-500">{clientError}</p>}
@@ -105,7 +96,10 @@ export default function VerifyPage() {
 
         <div className="text-center text-sm text-gray-600">
           {timer > 0 ? (
-            <p>Повторить можно через: <span className="font-medium">{formatTime(timer)}</span></p>
+            <p>
+              Повторить можно через:{' '}
+              <span className="font-medium">{formatTime(timer)}</span>
+            </p>
           ) : (
             <button
               onClick={handleResend}

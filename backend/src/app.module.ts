@@ -9,6 +9,7 @@ import { User } from './users/user.entity';
 import { MailModule } from './mail/mail.module';
 import { RedisModule as RedisMod } from '@nestjs-modules/ioredis';
 import { RedisModule } from './redis/redis.module';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 
 
 @Module({
@@ -31,6 +32,6 @@ import { RedisModule } from './redis/redis.module';
     RedisModule, MailModule
   ],
   controllers: [AppController],
-  providers: [AppService,],
+  providers: [AppService],
 })
 export class AppModule {}

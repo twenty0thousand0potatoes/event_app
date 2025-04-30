@@ -1,41 +1,106 @@
-import { Body, Controller, Headers, Post } from '@nestjs/common';
+import { Body, Controller, Headers, HttpCode, Post, Res, UseGuards, UnauthorizedException, Req } from '@nestjs/common';
+import { Response, Request } from 'express';
 import { AuthCredentialsDto } from './dto/auth-credentials.dto';
 import { AuthService } from './auth.service';
+
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
+
+  @HttpCode(200)
   @Post('/signup')
-  singUp(
+  async signUp(
     @Body() authCredentialsDto: AuthCredentialsDto,
-  ): Promise<{ temporaryToken: string }> {
-    return this.authService.SignUp(authCredentialsDto);
+    @Res({ passthrough: true }) res: Response
+  ): Promise<{ message: string }> {
+    const { temporaryToken } = await this.authService.SignUp(authCredentialsDto);
+    
+    res.cookie('temp_token', temporaryToken, {
+      httpOnly: true,
+      secure: false, 
+      sameSite: 'lax',
+      maxAge: 5 * 60 * 1000, 
+      domain: 'localhost'
+    });
+  
+    return { message: 'Код подтверждения отправлен на email' };
   }
 
+  @HttpCode(200)
   @Post('/signin')
-  singIn(
+  async signIn(
     @Body() authCredentialsDto: AuthCredentialsDto,
-  ): Promise<{ accessToken: string }> {
-    return this.authService.SignIn(authCredentialsDto);
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ message: string }> {
+    try {
+      const accessToken = await this.authService.SignIn(authCredentialsDto);
+
+      res.cookie('accessToken', accessToken, { 
+        httpOnly: true,
+        secure: false, // true в проде (HTTPS)
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000, 
+        domain: 'localhost', 
+      });
+
+      return { message: 'Login successful' };
+    } catch (error) {
+      throw new UnauthorizedException(error.message);
+    }
   }
+
+  @Post('logout')
+  @HttpCode(200)
+  async logout(@Res({ passthrough: true }) res: Response) {
+    res.clearCookie('accessToken',{ 
+      httpOnly: true,
+      secure: false, // true в проде (HTTPS)
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, 
+      domain: 'localhost', 
+    });
+    
+    return { message: 'Logged out successfully' };
+  }
+
 
   @Post('/verify')
-  verifyEmail(
+  async verifyEmail(
     @Body('code') code: string,
-    @Headers('authorization') authHeader: string,
-  ): Promise<{ accessToken: string }> {
-    const temporaryToken = authHeader?.replace('Bearer ', '');
-    if (!temporaryToken) {
-      throw new Error('Token not provided in Authorization header');
-    }
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response
+  ): Promise<{ message: string }> {
+    const temporaryToken = req.cookies.temp_token;
 
-    return this.authService.verifyEmail(code, temporaryToken);
+    
+    if (!temporaryToken) {
+      throw new UnauthorizedException('Сессия истекла');
+    }
+  
+    const { accessToken } = await this.authService.verifyEmail(code, temporaryToken);
+    
+    res.clearCookie('temp_token');
+    res.cookie('access_token', accessToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      domain: 'localhost'
+    });
+  
+    return { message: 'Email успешно подтвержден' };
   }
 
-  @Post('resend-code')
-  async resendCode(@Headers('Authorization') authHeader: string) {
-    const temporaryToken = authHeader?.split(' ')[1]
-    return this.authService.resendVerificationCode(temporaryToken)
+  @Post('/resend-code')
+  async resendCode(@Req() req: Request) {
+    const cookie = req.cookies?.temp_token; 
+
+    if (!cookie) {
+      throw new UnauthorizedException('Нет токена в cookies');
+    }
+  
+    return await this.authService.resendVerificationCode(cookie);
   }
 }

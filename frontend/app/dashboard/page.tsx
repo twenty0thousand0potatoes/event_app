@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import axios from 'axios'
-import { getToken, clearToken } from '../lib/auth'
 
 interface UserData {
   username: string
@@ -18,19 +17,19 @@ export default function DashboardPage() {
   const router = useRouter()
 
   useEffect(() => {
+
     const fetchUser = async () => {
       try {
-        const token = getToken()
-        if (!token) throw new Error('Нет токена')
-
         const res = await axios.get('http://localhost:3000/users/me', {
-          headers: { Authorization: `Bearer ${token}` },
-        })
+          withCredentials: true,
+        }) 
+
+      console.log(res);
+
         setUser(res.data)
         setUsername(res.data.username)
       } catch (err) {
-        clearToken()
-        router.push('/login?reason=unauthorized') // ⬅ редирект с объяснением
+        router.push('/login?reason=unauthorized')
       } finally {
         setLoading(false)
       }
@@ -39,18 +38,19 @@ export default function DashboardPage() {
     fetchUser()
   }, [])
 
-  const handleLogout = () => {
-    clearToken()
+  const handleLogout = async () => {
+    await axios.post('http://localhost:3000/auth/logout', {}, {
+      withCredentials: true,
+    })
     router.push('/login')
   }
 
   const handleUsernameChange = async () => {
     try {
-      const token = getToken()
       await axios.patch(
         'http://localhost:3000/users/username',
         { username },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { withCredentials: true } 
       )
       setMessage('Имя пользователя обновлено')
     } catch (err) {

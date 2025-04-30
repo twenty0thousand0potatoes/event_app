@@ -1,100 +1,109 @@
 'use client'
 
-import Link from 'next/link'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import axios from 'axios'
 import { useForm } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
-import axios from 'axios'
-import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { saveToken } from '../lib/auth'
+import Link from 'next/link'
 
 const schema = yup.object({
   email: yup.string().email('Неверный email').required('Обязательное поле'),
-  password: yup.string().min(6, 'Мин. 6 символов').required('Обязательное поле'),
+  password: yup.string()
+    .min(6, 'Минимум 6 символов')
+    .required('Введите пароль'),
 })
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const reason = searchParams.get('reason')
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm({ resolver: yupResolver(schema) })
+  const { register, handleSubmit, formState: { errors } } = useForm({
+    resolver: yupResolver(schema)
+  })
 
-  useEffect(() => {
-    if (reason === 'unauthorized') {
-      setError('Пожалуйста, войдите или зарегистрируйтесь для доступа к личному кабинету.')
-    }
-  }, [reason])
-
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: { email: string; password: string }) => {
     setLoading(true)
     setError(null)
+    
     try {
-      const response = await axios.post('http://localhost:3000/auth/signin', data)
-      const token = response.data.access_token
-      saveToken(token)
-      router.push('/dashboard') ;
+      await axios.post('http://localhost:3000/auth/signin', data, {
+        withCredentials: true 
+      })
+      
+      // Перенаправляем на dashboard после успешного входа
+      router.push('/dashboard')
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Ошибка при входе')
+      setError(
+        err.response?.data?.message || 
+        'Ошибка входа. Проверьте email и пароль'
+      )
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 px-4 py-10 sm:py-20 overflow-y-auto">
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm space-y-6"
-      >
-        <h2 className="text-3xl font-bold text-center text-gray-800">Вход</h2>
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 px-4">
+      <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-md">
+        <h1 className="text-2xl font-bold text-center mb-6 text-black">Вход в систему</h1>
+        
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div>
+            <label className="block mb-2 text-sm font-medium text-black">Email</label>
+            <input
+              type="email"
+              {...register('email')}
+              className={`w-full p-2 border rounded placeholder-black ${
+                errors.email ? 'border-red-500' : 'border-gray-300'
+              }`}
+              disabled={loading}
+            />
+            {errors.email && (
+              <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+            )}
+          </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-1 text-gray-700">Email</label>
-          <input
-            type="email"
-            {...register('email')}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Введите email"
-          />
-          {errors.email && <p className="text-sm text-red-500 mt-1">{errors.email.message}</p>}
-        </div>
+          <div>
+            <label className="block mb-2 text-sm font-medium text-black">Пароль</label>
+            <input
+              type="password"
+              {...register('password')}
+              className={`w-full p-2 border rounded placeholder-black ${
+                errors.password ? 'border-red-500' : 'border-gray-300'
+              }`}
+              disabled={loading}
+            />
+            {errors.password && (
+              <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+            )}
+          </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-1 text-gray-700">Пароль</label>
-          <input
-            type="password"
-            {...register('password')}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Введите пароль"
-          />
-          {errors.password && <p className="text-sm text-red-500 mt-1">{errors.password.message}</p>}
-        </div>
+          {error && (
+            <div className="p-2 text-sm text-red-600 bg-red-50 rounded">
+              {error}
+            </div>
+          )}
 
-        {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+          <button
+            type="submit"
+            disabled={loading}
+            className={`w-full py-2 px-4 rounded text-white ${
+              loading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'
+            }`}
+          >
+            {loading ? 'Вход...' : 'Войти'}
+          </button>
+        </form>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition font-semibold"
-        >
-          {loading ? 'Загрузка...' : 'Войти'}
-        </button>
-
-        <p className="text-center text-sm text-gray-600">
-          Нет аккаунта?{' '}
-          <Link href="/register" className="text-blue-600 underline font-medium">
-            Регистрация
+        <div className="mt-4 text-center text-sm">
+          <Link href="/register" className="text-blue-600 hover:underline">
+            Создать аккаунт
           </Link>
-        </p>
-      </form>
+        </div>
+      </div>
     </div>
   )
 }
