@@ -1,4 +1,3 @@
-// src/auth/guards/jwt-auth.guard.ts
 import {
   Injectable,
   CanActivate,
@@ -34,10 +33,11 @@ export class JwtAuthGuard implements CanActivate {
   }
 
   private extractTokenFromCookie(request: Request): string | undefined {
+
     if (request.cookies?.access_token.access_token == undefined) {
       return request.cookies?.access_token.accessToken;
-    } else {
+    } 
       return request.cookies?.access_token;
-    }
+    
   }
 }

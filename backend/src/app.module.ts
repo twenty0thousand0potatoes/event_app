@@ -10,6 +10,11 @@ import { MailModule } from './mail/mail.module';
 import { RedisModule as RedisMod } from '@nestjs-modules/ioredis';
 import { RedisModule } from './redis/redis.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { Hobby } from './hobby/hobby.entity';
+import { UserHobby } from './hobby/user-hobby.entity';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
+import { HobbyModule } from './hobby/hobby.module';
 
 
 @Module({
@@ -26,10 +31,15 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
       username:'postgres',
       password:'password',
       database:'test_app',
-      entities: [User],
+      entities: [User, Hobby, UserHobby],
       synchronize: true,
     }),
-    RedisModule, MailModule
+    RedisModule, MailModule,
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'uploads'),
+      serveRoot: '/uploads',
+    }),
+    HobbyModule,
   ],
   controllers: [AppController],
   providers: [AppService],

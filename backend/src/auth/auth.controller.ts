@@ -37,7 +37,7 @@ export class AuthController {
     try {
       const accessToken = await this.authService.SignIn(authCredentialsDto);
 
-      res.cookie('access_token', accessToken, { 
+      res.cookie('access_token', accessToken, {  
         httpOnly: true,
         secure: false, // true в проде (HTTPS)
         sameSite: 'lax',
@@ -74,12 +74,11 @@ export class AuthController {
   ): Promise<{ message: string }> {
     const temporaryToken = req.cookies.temp_token;
 
-    
     if (!temporaryToken) {
       throw new UnauthorizedException('Сессия истекла');
     }
   
-    const { accessToken } = await this.authService.verifyEmail(code, temporaryToken);
+    const accessToken  = await this.authService.verifyEmail(code, temporaryToken);
     
     res.clearCookie('temp_token');
     res.cookie('access_token', accessToken, {
