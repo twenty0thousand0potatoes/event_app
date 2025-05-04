@@ -37,7 +37,7 @@ export class AuthController {
     try {
       const accessToken = await this.authService.SignIn(authCredentialsDto);
 
-      res.cookie('accessToken', accessToken, { 
+      res.cookie('access_token', accessToken, { 
         httpOnly: true,
         secure: false, // true в проде (HTTPS)
         sameSite: 'lax',
@@ -54,7 +54,7 @@ export class AuthController {
   @Post('logout')
   @HttpCode(200)
   async logout(@Res({ passthrough: true }) res: Response) {
-    res.clearCookie('accessToken',{ 
+    res.clearCookie('access_token',{ 
       httpOnly: true,
       secure: false, // true в проде (HTTPS)
       sameSite: 'lax',

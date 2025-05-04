@@ -55,7 +55,6 @@ export class AuthService {
 
     const payload = { username: user.username, sub: user.id, role: user.role };
     const accessToken = this.jwtService.sign(payload);
-
     return { accessToken };
   }
 
@@ -87,7 +86,8 @@ export class AuthService {
       
       const accessToken = this.jwtService.sign({ 
         sub: user.id,
-        email: user.email
+        email: user.email, 
+        role: user.role
       });
   
       await this.redisService.delete(`verification:${email}`);

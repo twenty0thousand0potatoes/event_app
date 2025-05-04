@@ -33,7 +33,7 @@ export default function LoginPage() {
         withCredentials: true 
       })
       
-      // Перенаправляем на dashboard после успешного входа
+      
       router.push('/dashboard')
     } catch (err: any) {
       setError(
