@@ -102,4 +102,51 @@ export class AuthController {
   
     return await this.authService.resendVerificationCode(cookie);
   }
+
+  @Post('/request-password-reset')
+async requestPasswordReset(
+  @Body('email') email: string,
+  @Res({ passthrough: true }) res: Response
+) {
+  const { code, tempToken } = await this.authService.generateResetCode(email);
+
+  res.cookie('reset_token', tempToken, {
+    httpOnly: true,
+    sameSite: 'lax',
+    maxAge: 5 * 60 * 1000,
+    domain: 'localhost',
+  });
+
+  return { message: 'Код сброса отправлен на email' };
+}
+
+@Post('/verify-reset-code')
+async verifyResetCode(
+  @Body('code') code: string,
+  @Req() req: Request,
+  @Res({ passthrough: true }) res: Response,
+) {
+  const token = req.cookies.reset_token;
+  const { verifiedToken } = await this.authService.checkResetCode(token, code);
+
+  res.cookie('reset_verified_token', verifiedToken, {
+    httpOnly: true,
+    sameSite: 'lax',
+    maxAge: 5 * 60 * 1000,
+    domain: 'localhost',
+  });
+
+  return { message: 'Код подтвержден' };
+}
+
+@Post('/reset-password')
+async resetPassword(
+  @Body('password') password: string,
+  @Req() req: Request,
+) {
+  const token = req.cookies.reset_verified_token;
+  await this.authService.updatePasswordWithToken(token, password);
+  return { message: 'Пароль успешно изменен' };
+}
+
 }

@@ -20,24 +20,30 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors }
+  } = useForm({
     resolver: yupResolver(schema)
   })
+
+  const emailValue = watch('email') || ''
 
   const onSubmit = async (data: { email: string; password: string }) => {
     setLoading(true)
     setError(null)
-    
+
     try {
       await axios.post('http://localhost:3000/auth/signin', data, {
         withCredentials: true 
       })
-      
-      
+
       router.push('/dashboard')
     } catch (err: any) {
       setError(
-        err.response?.data?.message || 
+        err.response?.data?.message ||
         'Ошибка входа. Проверьте email и пароль'
       )
     } finally {
@@ -49,7 +55,7 @@ export default function LoginPage() {
     <div className="flex items-center justify-center min-h-screen bg-gray-100 px-4">
       <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-md">
         <h1 className="text-2xl font-bold text-center mb-6 text-black">Вход в систему</h1>
-        
+
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <label className="block mb-2 text-sm font-medium text-black">Email</label>
@@ -98,9 +104,16 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-4 text-center text-sm">
+        <div className="mt-4 text-center text-sm space-y-2">
           <Link href="/register" className="text-blue-600 hover:underline">
             Создать аккаунт
+          </Link>
+          <br />
+          <Link
+            href={`/forgot-password?email=${encodeURIComponent(emailValue)}`}
+            className="text-blue-600 hover:underline"
+          >
+            Забыли пароль?
           </Link>
         </div>
       </div>

@@ -24,6 +24,7 @@ export class UsersController {
     }
     
     return {
+      sub:user.id,
       username: user.username,
       email: user.email,
       role: user.role,
@@ -45,7 +46,6 @@ export class UsersController {
 
     return this.usersService.updateUsername(userId, dto);
   }
-
 
   @Post('me/hobbies')
   @UseGuards(RolesGuard)
@@ -87,6 +87,7 @@ export class UsersController {
     }),
     limits: { fileSize: 2 * 1024 * 1024 }, 
   }))
+  
   async uploadAvatar(
     @Req() req,
     @UploadedFile() file: Express.Multer.File,

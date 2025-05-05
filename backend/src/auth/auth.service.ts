@@ -130,5 +130,63 @@ export class AuthService {
       `<h1>Ваш новый код: ${newCode}</h1>`,
     );
   }
+
+  async generateResetCode(email: string): Promise<{ code: string, tempToken: string }> {
+    const user = await this.usersService.findByEmail(email);
+    if (!user) throw new UnauthorizedException('Пользователь не найден');
+  
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+  
+    await this.redisService.setWithTTL(
+      `reset:${email}`,
+      JSON.stringify({ email, code: resetCode, attempts: 0 }),
+      300,
+    );
+  
+    await this.mailService.sendEmail(
+      email,
+      'Сброс пароля',
+      `Ваш код для сброса пароля: ${resetCode}`,
+      `<h1>Код сброса: ${resetCode}</h1>`
+    );
+  
+    const tempToken = this.jwtService.sign({ email }, { expiresIn: '5m' });
+    return { code: resetCode, tempToken };
+  }
+  
+  async checkResetCode(token: string, code: string): Promise<{ verifiedToken: string }> {
+    if (!token) throw new UnauthorizedException('Токен сброса отсутствует или истек');
+  
+    const { email } = this.jwtService.verify(token);
+    const redisData = await this.redisService.get(`reset:${email}`);
+    if (!redisData) throw new UnauthorizedException('Истек код');
+  
+    const parsedData = JSON.parse(redisData);
+    if (parsedData.attempts >= 3) throw new UnauthorizedException('Превышено число попыток');
+  
+    if (code !== parsedData.code) {
+      await this.redisService.setWithTTL(
+        `reset:${email}`,
+        JSON.stringify({ ...parsedData, attempts: parsedData.attempts + 1 }),
+        300
+      );
+      throw new UnauthorizedException('Неверный код');
+    }
+  
+    await this.redisService.delete(`reset:${email}`);
+    const verifiedToken = this.jwtService.sign({ email, verified: true }, { expiresIn: '5m' });
+  
+    return { verifiedToken };
+  }
+  
+  async updatePasswordWithToken(token: string, password: string): Promise<void> {
+    if (!token) throw new UnauthorizedException('Сессия сброса недействительна');
+  
+    const { email, verified } = this.jwtService.verify(token);
+    if (!verified) throw new UnauthorizedException('Не подтверждено');
+  
+    await this.usersService.updatePassword(email, password);
+  }
+  
   
 }

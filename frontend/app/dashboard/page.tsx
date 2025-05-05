@@ -183,7 +183,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-100 px-4 py-10 text-black">
       <div className="max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-xl space-y-8">
-        <h2 className="text-3xl font-bold text-center">Личный кабинет</h2>
+        <h2 className="text-3xl font-bold text-center">Мой аккаунт</h2>
 
         <div className="flex flex-col items-center space-y-6">
           <div className="relative">

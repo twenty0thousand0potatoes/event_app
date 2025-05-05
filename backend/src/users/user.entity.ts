@@ -2,6 +2,9 @@
 import { Entity, PrimaryGeneratedColumn, Column, Unique, OneToMany } from 'typeorm';
 import { Roles } from 'src/auth/roles.enum';
 import { UserHobby } from '../hobby/user-hobby.entity';
+import { Event } from 'src/event/event.entity';
+
+
 
 @Entity()
 @Unique(['username'])
@@ -30,4 +33,10 @@ export class User {
 
   @OneToMany(() => UserHobby, userHobby => userHobby.user)
   hobbies: UserHobby[];
+
+
+  @OneToMany(() => Event, event => event.creator)
+  events: Event[];
 }
+
+

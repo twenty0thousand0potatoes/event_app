@@ -171,4 +171,16 @@ export class UsersService {
   async getHobbyByName(name: string): Promise<Hobby | undefined> {
     return this.hobbyRepository.findOne({ where: { name } });
   }
+
+  async updatePassword(email: string, newPassword: string): Promise<void> {
+    const user = await this.findByEmail(email);
+    if (!user) throw new NotFoundException('Пользователь не найден');
+  
+    const salt = await bcrypt.genSalt();
+    const hashPassword = await bcrypt.hash(newPassword, salt);
+  
+    user.password = hashPassword;
+    await this.usersRepository.save(user);
+  }
+  
 }

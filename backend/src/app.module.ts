@@ -15,7 +15,8 @@ import { UserHobby } from './hobby/user-hobby.entity';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { HobbyModule } from './hobby/hobby.module';
-
+import { Event } from './event/event.entity';
+import { EventModule } from './event/event.module';
 
 @Module({
   imports: [
@@ -25,21 +26,23 @@ import { HobbyModule } from './hobby/hobby.module';
       isGlobal: true,
     }),
     TypeOrmModule.forRoot({
-      type:"postgres",
-      host:'localhost',
-      port:5432,
-      username:'postgres',
-      password:'password',
-      database:'test_app',
-      entities: [User, Hobby, UserHobby],
+      type: "postgres",
+      host: 'localhost',
+      port: 5432,
+      username: 'postgres',
+      password: 'password',
+      database: 'test_app',
+      entities: [User, Event, Hobby, UserHobby],
       synchronize: true,
     }),
-    RedisModule, MailModule,
+    RedisModule,
+    MailModule,
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'uploads'),
       serveRoot: '/uploads',
     }),
     HobbyModule,
+    EventModule,
   ],
   controllers: [AppController],
   providers: [AppService],
