@@ -29,8 +29,6 @@ export default function LoginPage() {
     resolver: yupResolver(schema)
   })
 
-  const emailValue = watch('email') || ''
-
   const onSubmit = async (data: { email: string; password: string }) => {
     setLoading(true)
     setError(null)
@@ -52,43 +50,59 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 px-4">
-      <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-md">
-        <h1 className="text-2xl font-bold text-center mb-6 text-black">Вход в систему</h1>
+    <div className="flex items-center justify-center min-h-screen bg-black text-orange-100 px-4">
+      <div className="w-full max-w-md bg-gray-900 p-8 rounded-2xl shadow-lg border border-orange-800">
+        <h1 className="text-2xl font-bold text-center mb-6 text-orange-400">Вход в систему</h1>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label className="block mb-2 text-sm font-medium text-black">Email</label>
+            <label className="block mb-1 text-sm font-medium text-orange-300">Email</label>
             <input
               type="email"
               {...register('email')}
-              className={`w-full p-2 border rounded placeholder-black ${
-                errors.email ? 'border-red-500' : 'border-gray-300'
+              className={`w-full p-2 rounded bg-gray-800 text-orange-100 border ${
+                errors.email ? 'border-red-500' : 'border-orange-700'
               }`}
               disabled={loading}
             />
             {errors.email && (
-              <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+              <p className="mt-1 text-sm text-red-400">{errors.email.message}</p>
             )}
           </div>
 
           <div>
-            <label className="block mb-2 text-sm font-medium text-black">Пароль</label>
+            <label className="block mb-1 text-sm font-medium text-orange-300">Пароль</label>
             <input
               type="password"
               {...register('password')}
-              className={`w-full p-2 border rounded placeholder-black ${
-                errors.password ? 'border-red-500' : 'border-gray-300'
+              className={`w-full p-2 rounded bg-gray-800 text-orange-100 border ${
+                errors.password ? 'border-red-500' : 'border-orange-700'
               }`}
               disabled={loading}
             />
             {errors.password && (
-              <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+              <p className="mt-1 text-sm text-red-400">{errors.password.message}</p>
             )}
           </div>
 
+          <div className="text-right mb-4">
+            <button
+              type="button"
+              disabled={loading || !watch('email')}
+              onClick={() => {
+                const email = watch('email');
+                if (email) {
+                  router.push(`/forgot-password?email=${encodeURIComponent(email)}`);
+                }
+              }}
+              className="text-sm text-orange-400 hover:text-orange-300 underline disabled:text-gray-600 disabled:no-underline"
+            >
+              Забыли пароль?
+            </button>
+          </div>
+
           {error && (
-            <div className="p-2 text-sm text-red-600 bg-red-50 rounded">
+            <div className="p-3 text-sm text-red-300 bg-red-900 border border-red-700 rounded text-center">
               {error}
             </div>
           )}
@@ -96,26 +110,18 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-2 px-4 rounded text-white ${
-              loading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'
-            }`}
+            className="w-full bg-orange-500 hover:bg-orange-600 text-black py-2 rounded transition disabled:bg-gray-600 disabled:text-gray-400"
           >
-            {loading ? 'Вход...' : 'Войти'}
+            {loading ? 'Входим...' : 'Войти'}
           </button>
         </form>
 
-        <div className="mt-4 text-center text-sm space-y-2">
-          <Link href="/register" className="text-blue-600 hover:underline">
-            Создать аккаунт
+        <p className="mt-4 text-sm text-orange-300 text-center">
+          Нет аккаунта?{' '}
+          <Link href="/register" className="text-orange-400 hover:text-orange-300 underline">
+            Зарегистрироваться
           </Link>
-          <br />
-          <Link
-            href={`/forgot-password?email=${encodeURIComponent(emailValue)}`}
-            className="text-blue-600 hover:underline"
-          >
-            Забыли пароль?
-          </Link>
-        </div>
+        </p>
       </div>
     </div>
   )

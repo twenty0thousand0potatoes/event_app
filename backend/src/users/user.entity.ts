@@ -1,10 +1,13 @@
-
-import { Entity, PrimaryGeneratedColumn, Column, Unique, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  Unique,
+  OneToMany,
+} from 'typeorm';
 import { Roles } from 'src/auth/roles.enum';
 import { UserHobby } from '../hobby/user-hobby.entity';
 import { Event } from 'src/event/event.entity';
-
-
 
 @Entity()
 @Unique(['username'])
@@ -20,7 +23,7 @@ export class User {
 
   @Column()
   password: string;
- 
+
   @Column({
     type: 'enum',
     enum: Roles,
@@ -31,12 +34,19 @@ export class User {
   @Column({ nullable: true })
   avatar: string;
 
-  @OneToMany(() => UserHobby, userHobby => userHobby.user)
+  @Column({ nullable: true, type: 'text' })
+  description: string;
+
+  @Column({ nullable: true })
+  city: string;
+
+  @Column({ nullable: true, type: 'int' })
+  age: number;
+
+  @OneToMany(() => UserHobby, (userHobby) => userHobby.user)
   hobbies: UserHobby[];
 
-
-  @OneToMany(() => Event, event => event.creator)
+  @OneToMany(() => Event, (event) => event.creator)
   events: Event[];
+
 }
-
-

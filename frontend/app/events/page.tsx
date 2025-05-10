@@ -80,16 +80,16 @@ export default function EventsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 px-4 py-8 text-black">
-      <div className="max-w-7xl mx-auto bg-white p-8 rounded-2xl shadow-xl space-y-8">
+    <div className="min-h-screen bg-black px-4 py-8 text-white">
+      <div className="max-w-7xl mx-auto bg-black p-8 rounded-2xl shadow-xl space-y-8">
         <div className="flex flex-col md:flex-row gap-8">
-          <div className="w-full md:w-1/4 bg-white p-6 rounded-lg shadow space-y-4">
+          <div className="w-full md:w-1/4 bg-black p-6 rounded-lg shadow space-y-4">
             <h2 className="text-2xl font-semibold mb-4">Фильтры</h2>
 
             <input
               type="text"
               placeholder="Поиск по названию и организатору"
-              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+              className="w-full p-2 border border-orange-500 rounded focus:outline-none focus:ring-2 focus:ring-orange-500 mb-4 bg-black text-white"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -97,7 +97,7 @@ export default function EventsPage() {
             <div>
               <label className="block text-base font-medium mb-1">Тип мероприятия</label>
               <select
-                className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2 border border-orange-500 rounded focus:outline-none focus:ring-2 focus:ring-orange-500 bg-black text-white"
                 onChange={(e) => setFilters({ ...filters, type: e.target.value || undefined })}
               >
                 <option value="">Все</option>
@@ -113,13 +113,13 @@ export default function EventsPage() {
                 <input
                   type="number"
                   placeholder="От"
-                  className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 border border-orange-500 rounded focus:outline-none focus:ring-2 focus:ring-orange-500 bg-black text-white"
                   onChange={(e) => setFilters({ ...filters, minPrice: Number(e.target.value) })}
                 />
                 <input
                   type="number"
                   placeholder="До"
-                  className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 border border-orange-500 rounded focus:outline-none focus:ring-2 focus:ring-orange-500 bg-black text-white"
                   onChange={(e) => setFilters({ ...filters, maxPrice: Number(e.target.value) })}
                 />
               </div>
@@ -128,7 +128,7 @@ export default function EventsPage() {
             <div>
               <label className="block text-base font-medium mb-1">Сортировка</label>
               <select
-                className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2 border border-orange-500 rounded focus:outline-none focus:ring-2 focus:ring-orange-500 bg-black text-white"
                 onChange={(e) => {
                   const [sortBy, sortOrder] = e.target.value.split("-");
                   setFilters({ ...filters, sortBy: sortBy as any, sortOrder: sortOrder as any });
@@ -148,10 +148,10 @@ export default function EventsPage() {
 
             {loading ? (
               <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
               </div>
             ) : filteredEvents.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">Мероприятий не найдено</p>
+              <p className="text-center text-orange-300 py-8">Мероприятий не найдено</p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredEvents.map((event) => (

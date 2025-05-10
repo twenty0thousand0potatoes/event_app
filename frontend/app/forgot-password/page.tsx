@@ -46,19 +46,25 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 px-4 py-10 text-black">
-      <div className="max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-xl space-y-8">
-        <h1 className="text-2xl font-bold mb-4">Забыли пароль?</h1>
+    <div className="min-h-screen bg-black px-4 py-10 text-orange-100 flex items-center justify-center">
+      <div className="w-full max-w-md bg-gray-900 p-8 rounded-2xl shadow-xl border border-orange-600 space-y-6">
+        <h1 className="text-2xl font-bold text-center text-orange-400">Забыли пароль?</h1>
+
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <input
             type="email"
             placeholder="Email"
             {...register('email')}
-            className="w-full px-4 py-2 border rounded"
+            className="w-full px-4 py-2 bg-gray-800 border border-orange-500 text-orange-100 placeholder-orange-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
           />
-          {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
-          {serverError && <p className="text-red-500 text-sm">{serverError}</p>}
-          <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition">Отправить код</button>
+          {errors.email && <p className="text-sm text-red-400">{errors.email.message}</p>}
+          {serverError && <p className="text-sm text-red-400">{serverError}</p>}
+          <button
+            type="submit"
+            className="w-full bg-orange-500 hover:bg-orange-600 text-black py-2 rounded-lg font-semibold transition"
+          >
+            Отправить код
+          </button>
         </form>
       </div>
     </div>

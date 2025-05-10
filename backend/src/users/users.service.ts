@@ -62,6 +62,17 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
+  async getDescription(userId: number): Promise<string> {
+    const user = await this.findById(userId);
+    return user.description;
+  }
+
+  async updateDescription(userId: number, description: string): Promise<User> {
+    const user = await this.findById(userId);
+    user.description = description;
+    return this.usersRepository.save(user);
+  }
+
   async uploadAvatar(userId: number, filePath: string): Promise<User> {
     const user = await this.findById(userId);
     user.avatar = `/uploads/${filePath}`; 
@@ -76,8 +87,8 @@ export class UsersService {
     return this.usersRepository.findOne({ where: { email } });
   }
  
-  public async validateUser(username: string, password: string): Promise<User> {
-    const user = await this.findByUsername(username);
+  public async validateUser(email: string, password: string): Promise<User> {
+    const user = await this.findByEmail(email);
 
     if (!user) {
       throw new NotFoundException('Пользователь не найден!');
@@ -93,6 +104,18 @@ export class UsersService {
     const user = await this.findById(userId)
     user.username = dto.username
     return this.usersRepository.save(user)
+  }
+
+  async updateAge(userId: number, age: number): Promise<User> {
+    const user = await this.findById(userId);
+    user.age = age;
+    return this.usersRepository.save(user);
+  }
+
+  async updateCity(userId: number, city: string): Promise<User> {
+    const user = await this.findById(userId);
+    user.city = city;
+    return this.usersRepository.save(user);
   }
 
   async getUserHobbies(userId: number): Promise<Hobby[]> {

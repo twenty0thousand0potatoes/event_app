@@ -3,6 +3,8 @@ import { UsersService } from './users.service'
 import { Roles } from 'src/auth/roles.decorator'
 import { Roles as Role } from '../auth/roles.enum'
 import { UpdateUsernameDto } from '../auth/dto/update-username.dto'
+import { UpdateAgeDto } from '../auth/dto/update-age.dto'
+import { UpdateCityDto } from '../auth/dto/update-city.dto'
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard'
 import { RolesGuard } from 'src/auth/roles.guard'
 import { AddHobbyDto } from 'src/auth/dto/add-hobby.dto'
@@ -28,8 +30,23 @@ export class UsersController {
       username: user.username,
       email: user.email,
       role: user.role,
-      avatar: user.avatar
+      avatar: user.avatar,
+      age: user.age,
+      city: user.city,
+      description: user.description
     };
+  }
+
+  @Get('me/description')
+  async getDescription(@Request() req) {
+    const userId = req.user.sub;
+    return this.usersService.getDescription(userId);
+  }
+
+  @Patch('me/description')
+  async updateDescription(@Request() req, @Body('description') description: string) {
+    const userId = req.user.sub;
+    return this.usersService.updateDescription(userId, description);
   }
 
 
@@ -45,6 +62,34 @@ export class UsersController {
     }
 
     return this.usersService.updateUsername(userId, dto);
+  }
+
+  @Patch('me/age')
+  @UseGuards(RolesGuard)
+  @Roles(Role.USER, Role.MODERATOR, Role.ADMIN)
+  async updateOwnAge(@Request() req, @Body() dto: UpdateAgeDto) {
+    const userId = req.user.sub;
+
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('Пользователь не найден!');
+    }
+
+    return this.usersService.updateAge(userId, dto.age);
+  }
+
+  @Patch('me/city')
+  @UseGuards(RolesGuard)
+  @Roles(Role.USER, Role.MODERATOR, Role.ADMIN)
+  async updateOwnCity(@Request() req, @Body() dto: UpdateCityDto) {
+    const userId = req.user.sub;
+
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('Пользователь не найден!');
+    }
+
+    return this.usersService.updateCity(userId, dto.city);
   }
 
   @Post('me/hobbies')

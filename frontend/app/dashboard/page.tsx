@@ -14,21 +14,26 @@ interface UserData {
   email: string;
   hobbies: HobbyData[];
   avatar: string;
+  city?: string;
+  age?: number;
+  description?: string;
 }
 
 export default function DashboardPage() {
   const [user, setUser] = useState<UserData | null>(null);
   const [username, setUsername] = useState("");
+  const [city, setCity] = useState("");
+  const [age, setAge] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [hobbies, setHobbies] = useState<HobbyData[]>([]);
   const [allHobbies, setAllHobbies] = useState<string[]>([]);
   const [newHobby, setNewHobby] = useState("");
   const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState<"success" | "error">(
-    "success"
-  );
+  const [messageType, setMessageType] = useState<"success" | "error">("success");
   const [loading, setLoading] = useState(true);
   const [isCustomHobby, setIsCustomHobby] = useState(false);
+  const [showDescriptionInput, setShowDescriptionInput] = useState(false);
+  const [description, setDescription] = useState("");
 
   const router = useRouter();
 
@@ -48,7 +53,10 @@ export default function DashboardPage() {
         const userData = userRes.data as UserData;
         setUser({ ...userData, hobbies: hobbiesRes.data });
         setUsername(userData.username);
+        setCity(userData.city || "");
+        setAge(userData.age?.toString() || "");
         setAvatarUrl(userData.avatar || "");
+        setDescription(userData.description || "");
         setHobbies(hobbiesRes.data);
         setAllHobbies(allHobbiesRes.data.map((h: HobbyData) => h.name));
       } catch {
@@ -80,17 +88,58 @@ export default function DashboardPage() {
     }
   };
 
-  const updateUsername = async () => {
+  const updateProfile = async () => {
     try {
-      await axios.patch(
-        "http://localhost:3000/users/me/username",
-        { username },
-        { withCredentials: true }
+      const updatePromises = [];
+
+      if (user?.username !== username) {
+        updatePromises.push(
+          axios.patch(
+            "http://localhost:3000/users/me/username",
+            { username },
+            { withCredentials: true }
+          )
+        );
+      }
+
+      if (user?.city !== city) {
+        updatePromises.push(
+          axios.patch(
+            "http://localhost:3000/users/me/city",
+            { city },
+            { withCredentials: true }
+          )
+        );
+      }
+
+      if (user?.age !== parseInt(age)) {
+        updatePromises.push(
+          axios.patch(
+            "http://localhost:3000/users/me/age",
+            { age: parseInt(age) || null },
+            { withCredentials: true }
+          )
+        );
+      }
+
+      if (user?.description !== description) {
+        updatePromises.push(
+          axios.patch(
+            "http://localhost:3000/users/me/description",
+            { description },
+            { withCredentials: true }
+          )
+        );
+      }
+
+      await Promise.all(updatePromises);
+
+      setUser((u) =>
+        u ? { ...u, username, city, age: parseInt(age) || undefined, description } : u
       );
-      setUser((u) => (u ? { ...u, username } : u));
-      showMessage("Имя пользователя обновлено", "success");
+      showMessage("Профиль обновлен", "success");
     } catch {
-      showMessage("Ошибка при обновлении имени", "error");
+      showMessage("Ошибка при обновлении профиля", "error");
     }
   };
 
@@ -174,48 +223,157 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-black text-orange-400">
         Загрузка...
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 px-4 py-10 text-black">
-      <div className="max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-xl space-y-8">
-        <h2 className="text-3xl font-bold text-center">Мой аккаунт</h2>
-
-        <div className="flex flex-col items-center space-y-6">
-          <div className="relative">
-            <img
-              src={user?.avatar || "/placeholder.png"}
-              alt="Аватар"
-              className="w-32 h-32 rounded-full object-cover border-4 border-blue-500"
-            />
-            <label className="absolute bottom-0 right-0 bg-blue-500 text-white p-2 rounded-full cursor-pointer hover:bg-blue-600 transition">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarChange}
-                className="hidden"
+    <div className="min-h-screen bg-black px-4 py-6 text-orange-100">
+      <div className="max-w-md mx-auto space-y-6">
+        {/* Профиль пользователя */}
+        <div className="bg-gray-900 p-6 rounded-2xl shadow-lg border border-orange-800">
+          <div className="flex items-center space-x-4">
+            <div className="relative">
+              <img
+                src={user?.avatar || "/placeholder.png"}
+                alt="Аватар"
+                className="w-16 h-16 rounded-full object-cover border-2 border-orange-500"
               />
-              📷
-            </label>
+              <label className="absolute bottom-0 right-0 bg-orange-500 text-black p-1 rounded-full cursor-pointer hover:bg-orange-600 transition text-xs">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  className="hidden"
+                />
+                📷
+              </label>
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-orange-400">{username}</h1>
+              <p className="text-orange-300">
+                {city && `${city}, `}
+                {age && `${age} лет`}
+              </p>
+            </div>
           </div>
 
-          <div className="w-full space-y-4">
+          <div className="mt-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold text-orange-400">Описание</h2>
+              <button 
+                onClick={() => setShowDescriptionInput(!showDescriptionInput)}
+                className="text-orange-500 hover:text-orange-400 text-sm"
+              >
+                {showDescriptionInput ? "Отмена" : "Добавить описание >"}
+              </button>
+            </div>
+            
+            {!showDescriptionInput && description && (
+              <p className="mt-2 text-orange-200">{description}</p>
+            )}
+            
+            {showDescriptionInput && (
+              <div className="mt-2">
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full p-2 border border-orange-700 rounded bg-gray-800 text-orange-100"
+                  placeholder="Расскажите о себе..."
+                  rows={3}
+                />
+                <button
+                  onClick={updateProfile}
+                  className="mt-2 w-full bg-orange-500 hover:bg-orange-600 text-black py-2 rounded transition"
+                >
+                  Сохранить
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Друзья */}
+        <div className="bg-gray-900 p-6 rounded-2xl shadow-lg border border-orange-800">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-semibold text-orange-400">Нет друзей</h2>
+            <button className="bg-orange-500 hover:bg-orange-600 text-black px-4 py-1 rounded text-sm transition">
+              Найти друзей
+            </button>
+          </div>
+        </div>
+
+        {/* Мои встречи */}
+        <div className="bg-gray-900 p-6 rounded-2xl shadow-lg border border-orange-800">
+          <h2 className="text-lg font-semibold mb-4 text-orange-400">Мои встречи</h2>
+          
+          <div className="flex space-x-2 mb-4">
+            <button className="px-4 py-1 bg-orange-800 hover:bg-orange-700 text-orange-200 rounded-full text-sm transition">
+              Я иду
+            </button>
+            <button className="px-4 py-1 bg-orange-800 hover:bg-orange-700 text-orange-200 rounded-full text-sm transition">
+              Избранное
+            </button>
+          </div>
+          
+          <div className="text-center py-8 text-orange-300">
+            <p>У вас нет созданных встреч.</p>
+            <p className="mb-4">Создайте классику встречу, это легко!</p>
+            <button className="bg-orange-500 hover:bg-orange-600 text-black px-6 py-2 rounded transition">
+              Создать встречу
+            </button>
+          </div>
+        </div>
+
+        {/* Настройки профиля (скрытые по умолчанию) */}
+        <details className="bg-gray-900 p-6 rounded-2xl shadow-lg border border-orange-800">
+          <summary className="text-lg font-semibold cursor-pointer text-orange-400 hover:text-orange-300">
+            Настройки профиля
+          </summary>
+          
+          <div className="mt-4 space-y-4">
             <div>
-              <label className="text-sm font-medium">Ссылка на аватар</label>
-              <div className="flex space-x-2 mt-1">
+              <label className="block text-sm font-medium mb-1 text-orange-300">Имя пользователя</label>
+              <input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full px-3 py-2 border border-orange-700 rounded bg-gray-800 text-orange-100"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1 text-orange-300">Город</label>
+              <input
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                className="w-full px-3 py-2 border border-orange-700 rounded bg-gray-800 text-orange-100"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1 text-orange-300">Возраст</label>
+              <input
+                type="number"
+                value={age}
+                onChange={(e) => setAge(e.target.value)}
+                className="w-full px-3 py-2 border border-orange-700 rounded bg-gray-800 text-orange-100"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1 text-orange-300">Ссылка на аватар</label>
+              <div className="flex space-x-2">
                 <input
                   value={avatarUrl}
                   onChange={(e) => setAvatarUrl(e.target.value)}
-                  className="flex-1 px-3 py-2 border rounded"
+                  className="flex-1 px-3 py-2 border border-orange-700 rounded bg-gray-800 text-orange-100"
                   placeholder="https://..."
                 />
                 <button
                   onClick={updateAvatarByUrl}
-                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                  className="bg-orange-500 hover:bg-orange-600 text-black px-4 py-2 rounded transition"
                 >
                   Сохранить
                 </button>
@@ -223,40 +381,17 @@ export default function DashboardPage() {
             </div>
 
             <div>
-              <label className="text-sm font-medium">Имя пользователя</label>
-              <div className="flex space-x-2 mt-1">
-                <input
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="flex-1 px-3 py-2 border rounded"
-                />
-                <button
-                  onClick={updateUsername}
-                  disabled={!username.trim() || username === user?.username}
-                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-400"
-                >
-                  Сохранить
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Email</label>
-              <p className="bg-gray-50 px-4 py-2 mt-1 rounded">{user?.email}</p>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Увлечения</label>
-              <div className="flex flex-wrap gap-2 mt-2">
+              <label className="block text-sm font-medium mb-1 text-orange-300">Увлечения</label>
+              <div className="flex flex-wrap gap-2 mb-2">
                 {hobbies.map((h) => (
                   <span
                     key={h.id}
-                    className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm flex items-center space-x-1"
+                    className="px-3 py-1 bg-orange-900 text-orange-200 rounded-full text-sm flex items-center space-x-1"
                   >
                     <span>{h.name}</span>
                     <button
                       onClick={() => removeHobby(h.id)}
-                      className="text-red-500 ml-2"
+                      className="text-orange-400 hover:text-orange-300 ml-1"
                     >
                       ✕
                     </button>
@@ -264,7 +399,7 @@ export default function DashboardPage() {
                 ))}
               </div>
 
-              <div className="mt-4 flex space-x-2">
+              <div className="flex space-x-2">
                 <select
                   value={isCustomHobby ? "__custom__" : newHobby}
                   onChange={(e) => {
@@ -277,7 +412,7 @@ export default function DashboardPage() {
                       setNewHobby(value);
                     }
                   }}
-                  className="flex-1 px-3 py-2 border rounded"
+                  className="flex-1 px-3 py-2 border border-orange-700 rounded bg-gray-800 text-orange-100"
                 >
                   <option value="">Выберите из списка...</option>
                   {allHobbies.map((h, idx) => (
@@ -287,14 +422,6 @@ export default function DashboardPage() {
                   ))}
                   <option value="__custom__">Добавить своё</option>
                 </select>
-
-                <button
-                  onClick={addHobby}
-                  disabled={!newHobby || newHobby === "__custom__"}
-                  className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-400"
-                >
-                  Добавить
-                </button>
               </div>
 
               {isCustomHobby && (
@@ -303,38 +430,47 @@ export default function DashboardPage() {
                     placeholder="Введите своё увлечение"
                     value={newHobby}
                     onChange={(e) => setNewHobby(e.target.value)}
-                    className="flex-1 px-3 py-2 border rounded"
+                    className="flex-1 px-3 py-2 border border-orange-700 rounded bg-gray-800 text-orange-100"
                   />
-                  <button
-                    onClick={addHobby}
-                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-                  >
-                    Добавить
-                  </button>
                 </div>
               )}
+
+              <button
+                onClick={addHobby}
+                disabled={!newHobby || newHobby === "__custom__"}
+                className="mt-2 w-full bg-orange-500 hover:bg-orange-600 text-black px-4 py-2 rounded transition disabled:bg-gray-600 disabled:text-gray-400"
+              >
+                Добавить увлечение
+              </button>
             </div>
 
-            {message && (
-              <div
-                className={`p-3 rounded text-center ${
-                  messageType === "success"
-                    ? "bg-green-100 text-green-700"
-                    : "bg-red-100 text-red-700"
-                }`}
-              >
-                {message}
-              </div>
-            )}
+            <button
+              onClick={updateProfile}
+              className="w-full bg-orange-500 hover:bg-orange-600 text-black py-2 rounded transition"
+            >
+              Сохранить изменения
+            </button>
 
             <button
               onClick={handleLogout}
-              className="w-full bg-red-500 text-white py-2 rounded hover:bg-red-600"
+              className="w-full bg-red-700 hover:bg-red-600 text-orange-100 py-2 rounded transition"
             >
               Выйти
             </button>
           </div>
-        </div>
+        </details>
+
+        {message && (
+          <div
+            className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 p-3 rounded text-center ${
+              messageType === "success"
+                ? "bg-green-900 text-green-200 border border-green-700"
+                : "bg-red-900 text-red-200 border border-red-700"
+            }`}
+          >
+            {message}
+          </div>
+        )}
       </div>
     </div>
   );

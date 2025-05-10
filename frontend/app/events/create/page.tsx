@@ -98,17 +98,17 @@ export default function CreateEventPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center text-white bg-black">
         Загрузка...
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 px-4 py-8 text-black">
-      <div className="max-w-3xl mx-auto bg-white p-8 rounded-2xl shadow-xl">
+    <div className="min-h-screen bg-black px-4 py-8 text-white">
+      <div className="max-w-3xl mx-auto bg-black p-8 rounded-2xl shadow-xl">
         <h1 className="text-3xl font-semibold mb-6">Создать мероприятие</h1>
-        {error && <p className="mb-4 text-red-600">{error}</p>}
+        {error && <p className="mb-4 text-orange-500">{error}</p>}
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block mb-1 font-medium">Название</label>
@@ -117,7 +117,7 @@ export default function CreateEventPage() {
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border border-orange-500 rounded focus:outline-none focus:ring-2 focus:ring-orange-500 bg-black text-white"
             />
           </div>
           <div>
@@ -125,7 +125,7 @@ export default function CreateEventPage() {
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border border-orange-500 rounded focus:outline-none focus:ring-2 focus:ring-orange-500 bg-black text-white"
               rows={4}
             />
           </div>
@@ -136,7 +136,7 @@ export default function CreateEventPage() {
               required
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border border-orange-500 rounded focus:outline-none focus:ring-2 focus:ring-orange-500 bg-black text-white"
             />
           </div>
           <div>
@@ -147,7 +147,7 @@ export default function CreateEventPage() {
               max={1000}
               value={maxParticipants}
               onChange={(e) => setMaxParticipants(Number(e.target.value))}
-              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border border-orange-500 rounded focus:outline-none focus:ring-2 focus:ring-orange-500 bg-black text-white"
             />
           </div>
           <div>
@@ -155,7 +155,7 @@ export default function CreateEventPage() {
             <select
               value={type}
               onChange={(e) => setType(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border border-orange-500 rounded focus:outline-none focus:ring-2 focus:ring-orange-500 bg-black text-white"
             >
               <option value="regular">Обычные</option>
               <option value="online">Онлайн</option>
@@ -169,7 +169,7 @@ export default function CreateEventPage() {
               min={0}
               value={price}
               onChange={(e) => setPrice(Number(e.target.value))}
-              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border border-orange-500 rounded focus:outline-none focus:ring-2 focus:ring-orange-500 bg-black text-white"
             />
           </div>
           <div>
@@ -178,7 +178,7 @@ export default function CreateEventPage() {
               type="file"
               accept="image/*"
               onChange={handleFileChange}
-              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border border-orange-500 rounded focus:outline-none focus:ring-2 focus:ring-orange-500 bg-black text-white"
               disabled={uploading}
             />
             {uploading && <p>Загрузка...</p>}
@@ -189,7 +189,7 @@ export default function CreateEventPage() {
           <button
             type="submit"
             disabled={loading || uploading}
-            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+            className="w-full bg-orange-500 text-black py-2 rounded hover:bg-orange-600 disabled:opacity-50"
           >
             {loading ? "Создание..." : "Создать"}
           </button>

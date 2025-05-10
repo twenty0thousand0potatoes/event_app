@@ -58,7 +58,6 @@ export default function VerifyPage() {
       setTimer(300)
       alert('Код повторно отправлен на почту.')
     } catch (err) {
-
       console.log(err)
       alert('Не удалось повторно отправить код. Попробуйте позже.')
     }
@@ -71,30 +70,30 @@ export default function VerifyPage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 px-4 py-10 sm:py-20 overflow-y-auto">
-      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm space-y-6">
-        <h2 className="text-3xl font-bold text-center text-gray-800">Подтверждение почты</h2>
+    <div className="flex items-center justify-center min-h-screen bg-black px-4 py-10 sm:py-20">
+      <div className="bg-gray-900 p-8 rounded-2xl shadow-xl w-full max-w-sm border border-orange-600 space-y-6">
+        <h2 className="text-2xl font-bold text-center text-orange-400">Подтверждение почты</h2>
 
         <input
           type="text"
           value={code}
           onChange={(e) => setCode(e.target.value)}
           placeholder="Введите код из письма"
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black placeholder:text-black"
+          className="w-full px-4 py-2 bg-gray-800 border border-orange-500 text-orange-100 placeholder-orange-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
         />
 
-        {clientError && <p className="text-sm text-red-500">{clientError}</p>}
-        {backendError && <p className="text-sm text-red-500">{backendError}</p>}
+        {clientError && <p className="text-sm text-red-400">{clientError}</p>}
+        {backendError && <p className="text-sm text-red-400">{backendError}</p>}
 
         <button
           onClick={handleVerify}
           disabled={loading}
-          className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition font-semibold"
+          className="w-full bg-orange-500 hover:bg-orange-600 text-black py-2 rounded-lg font-semibold transition disabled:bg-gray-600"
         >
           {loading ? 'Проверка...' : 'Подтвердить'}
         </button>
 
-        <div className="text-center text-sm text-gray-600">
+        <div className="text-center text-sm text-orange-300">
           {timer > 0 ? (
             <p>
               Повторить можно через:{' '}
@@ -103,7 +102,7 @@ export default function VerifyPage() {
           ) : (
             <button
               onClick={handleResend}
-              className="text-blue-600 underline font-medium mt-2"
+              className="text-orange-400 hover:text-orange-300 underline font-medium"
             >
               Отправить код снова
             </button>
