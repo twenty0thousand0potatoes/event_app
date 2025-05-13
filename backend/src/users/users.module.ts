@@ -6,12 +6,11 @@ import { User } from './user.entity';
 import { JwtModule } from '@nestjs/jwt';
 import { Hobby } from 'src/hobby/hobby.entity';
 import { UserHobby } from 'src/hobby/user-hobby.entity';
-
-
+import { StripeService } from 'src/stripe/stripe.service';
 
 @Module({
   imports:[TypeOrmModule.forFeature([User, Hobby, UserHobby]), JwtModule],
-  providers: [UsersService,],
+  providers: [UsersService, StripeService],
   controllers: [UsersController],
   exports :[UsersService, ]
 })

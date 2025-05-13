@@ -12,11 +12,15 @@ import { UpdateAvatarDto } from 'src/auth/dto/update-avatar.dto'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { diskStorage } from 'multer';
 import { extname } from 'path'
+import { StripeService } from 'src/stripe/stripe.service';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard) 
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly stripeService: StripeService,
+  ) {}
 
   @Get('me')
   async getCurrentUser(@Request() req) {
@@ -33,8 +37,46 @@ export class UsersController {
       avatar: user.avatar,
       age: user.age,
       city: user.city,
-      description: user.description
+      description: user.description,
+      isPlusSubscriber: user.isPlusSubscriber,
+      plusSubscriptionExpiresAt: user.plusSubscriptionExpiresAt,
     };
+  }
+
+  @Post('me/subscribe')
+  async createSubscription(@Request() req) {
+    const userId = req.user.sub;
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('Пользователь не найден!');
+    }
+
+    const customer = await this.stripeService.createCustomer(user.email);
+
+    const priceId = process.env.STRIPE_PLUS_PRICE_ID;
+    if (!priceId) {
+      throw new Error('STRIPE_PLUS_PRICE_ID не настроен');
+    }
+
+    const subscription = await this.stripeService.createSubscription(customer.id, priceId);
+
+ 
+    let clientSecret = null;
+    if (typeof subscription.latest_invoice !== 'string' && subscription.latest_invoice && 'payment_intent' in subscription.latest_invoice) {
+      // @ts-ignore
+      clientSecret = subscription.latest_invoice.payment_intent.client_secret;
+    }
+
+    return {
+      subscriptionId: subscription.id,
+      clientSecret,
+      status: subscription.status,
+    };
+  }
+
+  @Get('me/subscription')
+  async getSubscriptionStatus(@Request() req) {
+    return this.usersService.getSubscriptionStatus(req.user.sub);
   }
 
   @Get('me/description')

@@ -49,4 +49,9 @@ export class User {
   @OneToMany(() => Event, (event) => event.creator)
   events: Event[];
 
+  @Column({ default: false })
+  isPlusSubscriber: boolean;
+
+  @Column({ nullable: true, type: 'timestamp' })
+  plusSubscriptionExpiresAt: Date | null;
 }

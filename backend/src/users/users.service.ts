@@ -46,6 +46,31 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
+  async activatePlusSubscription(userId: number, expiresAt: Date): Promise<User> {
+    const user = await this.findById(userId);
+    user.isPlusSubscriber = true;
+    user.plusSubscriptionExpiresAt = expiresAt;
+    return this.usersRepository.save(user);
+  }
+
+  async checkAndUpdateSubscriptionStatus(userId: number): Promise<User> {
+    const user = await this.findById(userId);
+    if (user.plusSubscriptionExpiresAt && user.plusSubscriptionExpiresAt < new Date()) {
+      user.isPlusSubscriber = false;
+      user.plusSubscriptionExpiresAt = null;
+      await this.usersRepository.save(user);
+    }
+    return user;
+  }
+
+  async getSubscriptionStatus(userId: number): Promise<{ isPlusSubscriber: boolean; plusSubscriptionExpiresAt: Date | null }> {
+    const user = await this.findById(userId);
+    return {
+      isPlusSubscriber: user.isPlusSubscriber,
+      plusSubscriptionExpiresAt: user.plusSubscriptionExpiresAt,
+    };
+  }
+
   
   async findById(id: number): Promise<User> {
     const user = await this.usersRepository.findOne({ where: { id } })

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
+import SubscriptionForm from "../../components/SubscriptionForm";
 
 interface HobbyData {
   id: number;
@@ -17,6 +18,8 @@ interface UserData {
   city?: string;
   age?: number;
   description?: string;
+  isPlusSubscriber?: boolean;
+  plusSubscriptionExpiresAt?: string;
 }
 
 export default function DashboardPage() {
@@ -34,6 +37,7 @@ export default function DashboardPage() {
   const [isCustomHobby, setIsCustomHobby] = useState(false);
   const [showDescriptionInput, setShowDescriptionInput] = useState(false);
   const [description, setDescription] = useState("");
+  const [showSubscriptionPopup, setShowSubscriptionPopup] = useState(false);
 
   const router = useRouter();
 
@@ -221,6 +225,65 @@ export default function DashboardPage() {
     }
   };
 
+  const openSubscriptionPopup = () => {
+    setShowSubscriptionPopup(true);
+  };
+
+  const closeSubscriptionPopup = () => {
+    setShowSubscriptionPopup(false);
+  };
+
+
+
+  const [subscriptionClientSecret, setSubscriptionClientSecret] = useState<string | null>(null);
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+
+  const handleSubscribe = async () => {
+    try {
+      const res = await axios.post(
+        "http://localhost:3000/users/me/subscribe",
+        {},
+        { withCredentials: true }
+      );
+      const { clientSecret } = res.data;
+      if (clientSecret) {
+        setSubscriptionClientSecret(clientSecret);
+        setShowPaymentForm(true);
+      } else {
+        showMessage("Подписка оформлена. Спасибо!", "success");
+        closeSubscriptionPopup();
+        // Обновить данные пользователя
+        const userRes = await axios.get("http://localhost:3000/users/me", {
+          withCredentials: true,
+        });
+        setUser(userRes.data);
+      }
+    } catch {
+      showMessage("Ошибка при оформлении подписки", "error");
+    }
+  };
+
+  const handlePaymentSuccess = async () => {
+    showMessage("Оплата прошла успешно! Подписка активирована.", "success");
+    setShowPaymentForm(false);
+    setSubscriptionClientSecret(null);
+    closeSubscriptionPopup();
+    // Обновить данные пользователя
+    const userRes = await axios.get("http://localhost:3000/users/me", {
+      withCredentials: true,
+    });
+    setUser(userRes.data);
+  };
+
+  const handlePaymentError = (message: string) => {
+    showMessage(message, "error");
+  };
+
+  const handlePaymentCancel = () => {
+    setShowPaymentForm(false);
+    setSubscriptionClientSecret(null);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black text-orange-400">
@@ -293,6 +356,60 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Подписка Plus */}
+        <div className="bg-gray-900 p-6 rounded-2xl shadow-lg border border-orange-800">
+          <h2 className="text-lg font-semibold mb-4 text-orange-400">Подписка Plus</h2>
+          {user?.isPlusSubscriber ? (
+            <p className="text-green-400 mb-2">
+              Ваша подписка активна до {user.plusSubscriptionExpiresAt ? new Date(user.plusSubscriptionExpiresAt).toLocaleDateString() : "неизвестно"}.
+            </p>
+          ) : (
+            <>
+              <button
+                onClick={openSubscriptionPopup}
+                className="w-full bg-orange-500 hover:bg-orange-600 text-black py-2 rounded transition"
+              >
+                Оформить подписку Plus
+              </button>
+
+          {showSubscriptionPopup && (
+            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+              <div className="bg-gray-900 p-6 rounded-2xl shadow-lg border border-orange-800 max-w-sm w-full">
+                {!showPaymentForm && (
+                  <>
+                    <h3 className="text-lg font-semibold mb-4 text-orange-400">Подтвердите оформление подписки</h3>
+                    <p className="mb-4 text-orange-200">Стоимость подписки: 500 рублей в месяц.</p>
+                    <div className="flex justify-end space-x-4">
+                      <button
+                        onClick={closeSubscriptionPopup}
+                        className="bg-gray-700 hover:bg-gray-600 text-orange-300 px-4 py-2 rounded transition"
+                      >
+                        Отмена
+                      </button>
+                      <button
+                        onClick={handleSubscribe}
+                        className="bg-orange-500 hover:bg-orange-600 text-black px-4 py-2 rounded transition"
+                      >
+                        Подтвердить
+                      </button>
+                    </div>
+                  </>
+                )}
+                {showPaymentForm && subscriptionClientSecret && (
+                  <SubscriptionForm
+                    clientSecret={subscriptionClientSecret}
+                    onSuccess={handlePaymentSuccess}
+                    onError={handlePaymentError}
+                    onCancel={handlePaymentCancel}
+                  />
+                )}
+              </div>
+            </div>
+          )}
+            </>
+          )}
         </div>
 
         {/* Друзья */}
@@ -434,43 +551,9 @@ export default function DashboardPage() {
                   />
                 </div>
               )}
-
-              <button
-                onClick={addHobby}
-                disabled={!newHobby || newHobby === "__custom__"}
-                className="mt-2 w-full bg-orange-500 hover:bg-orange-600 text-black px-4 py-2 rounded transition disabled:bg-gray-600 disabled:text-gray-400"
-              >
-                Добавить увлечение
-              </button>
             </div>
-
-            <button
-              onClick={updateProfile}
-              className="w-full bg-orange-500 hover:bg-orange-600 text-black py-2 rounded transition"
-            >
-              Сохранить изменения
-            </button>
-
-            <button
-              onClick={handleLogout}
-              className="w-full bg-red-700 hover:bg-red-600 text-orange-100 py-2 rounded transition"
-            >
-              Выйти
-            </button>
           </div>
         </details>
-
-        {message && (
-          <div
-            className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 p-3 rounded text-center ${
-              messageType === "success"
-                ? "bg-green-900 text-green-200 border border-green-700"
-                : "bg-red-900 text-red-200 border border-red-700"
-            }`}
-          >
-            {message}
-          </div>
-        )}
       </div>
     </div>
   );
