@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
+import YandexMap from "../../../components/YandexMap";
 
 export default function CreateEventPage() {
   const router = useRouter();
@@ -14,10 +15,13 @@ export default function CreateEventPage() {
   const [type, setType] = useState("regular");
   const [price, setPrice] = useState(0);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [isPlusSubscriber, setIsPlusSubscriber] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -27,6 +31,7 @@ export default function CreateEventPage() {
         });
 
         setUserRole(res.data.role);
+        setIsPlusSubscriber(res.data.isPlusSubscriber || false);
         setLoading(false);
       } catch {
         router.push("/login?reason=unauthorized");
@@ -49,7 +54,7 @@ export default function CreateEventPage() {
     formData.append("file", file);
 
     setUploading(true);
-    try { 
+    try {
       const res = await axios.post("http://localhost:3000/events/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
         withCredentials: true,
@@ -68,6 +73,19 @@ export default function CreateEventPage() {
     setError(null);
     setLoading(true);
 
+    if (userRole === "user" && !isPlusSubscriber) {
+      if (type === "premium") {
+        setError('Мероприятия типа "Премиум" доступны только для пользователей с подпиской Plus');
+        setLoading(false);
+        return;
+      }
+      if (price > 0) {
+        setError('Платные мероприятия доступны только для пользователей с подпиской Plus');
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       const response = await axios.post(
         "http://localhost:3000/events",
@@ -79,6 +97,8 @@ export default function CreateEventPage() {
           type,
           price,
           imageUrl,
+          latitude,
+          longitude,
         },
         { withCredentials: true }
       );
@@ -156,6 +176,7 @@ export default function CreateEventPage() {
               value={type}
               onChange={(e) => setType(e.target.value)}
               className="w-full p-2 border border-orange-500 rounded focus:outline-none focus:ring-2 focus:ring-orange-500 bg-black text-white"
+              disabled={userRole === "user" && !isPlusSubscriber}
             >
               <option value="regular">Обычные</option>
               <option value="online">Онлайн</option>
@@ -170,7 +191,15 @@ export default function CreateEventPage() {
               value={price}
               onChange={(e) => setPrice(Number(e.target.value))}
               className="w-full p-2 border border-orange-500 rounded focus:outline-none focus:ring-2 focus:ring-orange-500 bg-black text-white"
+              disabled={userRole === "user" && !isPlusSubscriber}
             />
+          </div>
+          <div>
+            <label className="block mb-1 font-medium">Место проведения</label>
+            <YandexMap onLocationSelect={(lat, lon) => { setLatitude(lat); setLongitude(lon); }} />
+            {latitude && longitude && (
+              <p className="mt-2">Выбранные координаты: {latitude.toFixed(6)}, {longitude.toFixed(6)}</p>
+            )}
           </div>
           <div>
             <label className="block mb-1 font-medium">Фото мероприятия</label>

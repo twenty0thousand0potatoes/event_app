@@ -38,6 +38,9 @@ export default function DashboardPage() {
   const [showDescriptionInput, setShowDescriptionInput] = useState(false);
   const [description, setDescription] = useState("");
   const [showSubscriptionPopup, setShowSubscriptionPopup] = useState(false);
+  const [showMessagePopup, setShowMessagePopup] = useState(false);
+  const [subscriptionClientSecret, setSubscriptionClientSecret] = useState<string | null>(null);
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
 
   const router = useRouter();
 
@@ -55,6 +58,7 @@ export default function DashboardPage() {
         ]);
 
         const userData = userRes.data as UserData;
+        console.log(userData);
         setUser({ ...userData, hobbies: hobbiesRes.data });
         setUsername(userData.username);
         setCity(userData.city || "");
@@ -76,7 +80,11 @@ export default function DashboardPage() {
   const showMessage = (msg: string, type: "success" | "error") => {
     setMessage(msg);
     setMessageType(type);
-    setTimeout(() => setMessage(""), 3000);
+    setShowMessagePopup(true);
+    setTimeout(() => {
+      setShowMessagePopup(false);
+      setMessage("");
+    }, 3000);
   };
 
   const handleLogout = async () => {
@@ -207,9 +215,8 @@ export default function DashboardPage() {
       });
       setHobbies(res.data);
       setNewHobby("");
-      showMessage("Увлечение добавлено", "success");
     } catch {
-      showMessage("Ошибка при добавлении увлечения", "error");
+      throw new Error("Ошибка при добавлении увлечения");
     }
   };
 
@@ -225,6 +232,16 @@ export default function DashboardPage() {
     }
   };
 
+  const saveHobbies = async () => {
+    if (!newHobby.trim()) return;
+    try {
+      await addHobby();
+      showMessage("Хобби сохранены", "success");
+    } catch {
+      showMessage("Ошибка при сохранении хобби", "error");
+    }
+  };
+
   const openSubscriptionPopup = () => {
     setShowSubscriptionPopup(true);
   };
@@ -232,11 +249,6 @@ export default function DashboardPage() {
   const closeSubscriptionPopup = () => {
     setShowSubscriptionPopup(false);
   };
-
-
-
-  const [subscriptionClientSecret, setSubscriptionClientSecret] = useState<string | null>(null);
-  const [showPaymentForm, setShowPaymentForm] = useState(false);
 
   const handleSubscribe = async () => {
     try {
@@ -252,7 +264,6 @@ export default function DashboardPage() {
       } else {
         showMessage("Подписка оформлена. Спасибо!", "success");
         closeSubscriptionPopup();
-        // Обновить данные пользователя
         const userRes = await axios.get("http://localhost:3000/users/me", {
           withCredentials: true,
         });
@@ -268,7 +279,6 @@ export default function DashboardPage() {
     setShowPaymentForm(false);
     setSubscriptionClientSecret(null);
     closeSubscriptionPopup();
-    // Обновить данные пользователя
     const userRes = await axios.get("http://localhost:3000/users/me", {
       withCredentials: true,
     });
@@ -292,8 +302,23 @@ export default function DashboardPage() {
     );
   }
 
+
+  
+  const handleCreateMeeting = () => {
+    router.push("http://localhost:3001/events/create");
+  };
+
   return (
-    <div className="min-h-screen bg-black px-4 py-6 text-orange-100">
+    <div className="min-h-screen bg-black px-4 py-6 text-orange-100 relative">
+      {/* Сообщения */}
+      {showMessagePopup && (
+        <div className={`fixed top-4 left-1/2 transform -translate-x-1/2 z-50 px-4 py-2 rounded-md ${
+          messageType === "success" ? "bg-green-600" : "bg-red-600"
+        } text-white shadow-lg transition-opacity duration-300`}>
+          {message}
+        </div>
+      )}
+
       <div className="max-w-md mx-auto space-y-6">
         {/* Профиль пользователя */}
         <div className="bg-gray-900 p-6 rounded-2xl shadow-lg border border-orange-800">
@@ -320,6 +345,81 @@ export default function DashboardPage() {
                 {city && `${city}, `}
                 {age && `${age} лет`}
               </p>
+            </div>
+          </div>
+
+          {/* Блок с хобби */}
+          <div className="mt-4">
+            <h2 className="text-lg font-semibold mb-2 text-orange-400">Мои увлечения</h2>
+            {hobbies.length > 0 ? (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {hobbies.map((h) => (
+                  <span
+                    key={h.id}
+                    className="px-3 py-1 bg-orange-500 bg-opacity-20 text-orange-200 rounded-full text-sm flex items-center space-x-1 border border-orange-500 border-opacity-50"
+                  >
+                    <span>{h.name}</span>
+                    <button
+                      onClick={() => removeHobby(h.id)}
+                      className="text-orange-300 hover:text-orange-100 ml-1 text-xs"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-orange-300 text-sm mb-4">У вас пока нет увлечений</p>
+            )}
+
+            <div className="space-y-2">
+              <div className="flex space-x-2">
+                <select
+                  value={isCustomHobby ? "__custom__" : newHobby}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === "__custom__") {
+                      setIsCustomHobby(true);
+                      setNewHobby("");
+                    } else {
+                      setIsCustomHobby(false);
+                      setNewHobby(value);
+                    }
+                  }}
+                  className="flex-1 px-3 py-2 border border-orange-700 rounded bg-gray-800 text-orange-100"
+                >
+                  <option value="">Выберите из списка...</option>
+                  {allHobbies.map((h, idx) => (
+                    <option key={idx} value={h}>
+                      {h}
+                    </option>
+                  ))}
+                  <option value="__custom__">Добавить своё</option>
+                </select>
+              </div>
+
+              {isCustomHobby && (
+                <div className="flex space-x-2">
+                  <input
+                    placeholder="Введите своё увлечение"
+                    value={newHobby}
+                    onChange={(e) => setNewHobby(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-orange-700 rounded bg-gray-800 text-orange-100"
+                  />
+                </div>
+              )}
+
+              <button
+                onClick={saveHobbies}
+                disabled={!newHobby.trim()}
+                className={`w-full py-2 rounded transition ${
+                  !newHobby.trim()
+                    ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                    : "bg-orange-500 hover:bg-orange-600 text-black"
+                }`}
+              >
+                Сохранить увлечение
+              </button>
             </div>
           </div>
 
@@ -374,40 +474,40 @@ export default function DashboardPage() {
                 Оформить подписку Plus
               </button>
 
-          {showSubscriptionPopup && (
-            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-              <div className="bg-gray-900 p-6 rounded-2xl shadow-lg border border-orange-800 max-w-sm w-full">
-                {!showPaymentForm && (
-                  <>
-                    <h3 className="text-lg font-semibold mb-4 text-orange-400">Подтвердите оформление подписки</h3>
-                    <p className="mb-4 text-orange-200">Стоимость подписки: 500 рублей в месяц.</p>
-                    <div className="flex justify-end space-x-4">
-                      <button
-                        onClick={closeSubscriptionPopup}
-                        className="bg-gray-700 hover:bg-gray-600 text-orange-300 px-4 py-2 rounded transition"
-                      >
-                        Отмена
-                      </button>
-                      <button
-                        onClick={handleSubscribe}
-                        className="bg-orange-500 hover:bg-orange-600 text-black px-4 py-2 rounded transition"
-                      >
-                        Подтвердить
-                      </button>
-                    </div>
-                  </>
-                )}
-                {showPaymentForm && subscriptionClientSecret && (
-                  <SubscriptionForm
-                    clientSecret={subscriptionClientSecret}
-                    onSuccess={handlePaymentSuccess}
-                    onError={handlePaymentError}
-                    onCancel={handlePaymentCancel}
-                  />
-                )}
-              </div>
-            </div>
-          )}
+              {showSubscriptionPopup && (
+                <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+                  <div className="bg-gray-900 p-6 rounded-2xl shadow-lg border border-orange-800 max-w-sm w-full">
+                    {!showPaymentForm && (
+                      <>
+                        <h3 className="text-lg font-semibold mb-4 text-orange-400">Подтвердите оформление подписки</h3>
+                        <p className="mb-4 text-orange-200">Стоимость подписки: 2,99$ в месяц.</p>
+                        <div className="flex justify-end space-x-4">
+                          <button
+                            onClick={closeSubscriptionPopup}
+                            className="bg-gray-700 hover:bg-gray-600 text-orange-300 px-4 py-2 rounded transition"
+                          >
+                            Отмена
+                          </button>
+                          <button
+                            onClick={handleSubscribe}
+                            className="bg-orange-500 hover:bg-orange-600 text-black px-4 py-2 rounded transition"
+                          >
+                            Подтвердить
+                          </button>
+                        </div>
+                      </>
+                    )}
+                    {showPaymentForm && subscriptionClientSecret && (
+                      <SubscriptionForm
+                        clientSecret={subscriptionClientSecret}
+                        onSuccess={handlePaymentSuccess}
+                        onError={handlePaymentError}
+                        onCancel={handlePaymentCancel}
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -437,14 +537,14 @@ export default function DashboardPage() {
           
           <div className="text-center py-8 text-orange-300">
             <p>У вас нет созданных встреч.</p>
-            <p className="mb-4">Создайте классику встречу, это легко!</p>
-            <button className="bg-orange-500 hover:bg-orange-600 text-black px-6 py-2 rounded transition">
+            <p className="mb-4">Создайте встречу, это легко!</p>
+            <button className="bg-orange-500 hover:bg-orange-600 text-black px-6 py-2 rounded transition" onClick={handleCreateMeeting}>
               Создать встречу
             </button>
           </div>
         </div>
 
-        {/* Настройки профиля (скрытые по умолчанию) */}
+        {/* Настройки профиля */}
         <details className="bg-gray-900 p-6 rounded-2xl shadow-lg border border-orange-800">
           <summary className="text-lg font-semibold cursor-pointer text-orange-400 hover:text-orange-300">
             Настройки профиля
@@ -497,61 +597,19 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1 text-orange-300">Увлечения</label>
-              <div className="flex flex-wrap gap-2 mb-2">
-                {hobbies.map((h) => (
-                  <span
-                    key={h.id}
-                    className="px-3 py-1 bg-orange-900 text-orange-200 rounded-full text-sm flex items-center space-x-1"
-                  >
-                    <span>{h.name}</span>
-                    <button
-                      onClick={() => removeHobby(h.id)}
-                      className="text-orange-400 hover:text-orange-300 ml-1"
-                    >
-                      ✕
-                    </button>
-                  </span>
-                ))}
-              </div>
+            <button
+              onClick={updateProfile}
+              className="mt-4 w-full bg-orange-500 hover:bg-orange-600 text-black py-2 rounded transition"
+            >
+              Сохранить изменения профиля
+            </button>
 
-              <div className="flex space-x-2">
-                <select
-                  value={isCustomHobby ? "__custom__" : newHobby}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value === "__custom__") {
-                      setIsCustomHobby(true);
-                      setNewHobby("");
-                    } else {
-                      setIsCustomHobby(false);
-                      setNewHobby(value);
-                    }
-                  }}
-                  className="flex-1 px-3 py-2 border border-orange-700 rounded bg-gray-800 text-orange-100"
-                >
-                  <option value="">Выберите из списка...</option>
-                  {allHobbies.map((h, idx) => (
-                    <option key={idx} value={h}>
-                      {h}
-                    </option>
-                  ))}
-                  <option value="__custom__">Добавить своё</option>
-                </select>
-              </div>
-
-              {isCustomHobby && (
-                <div className="mt-2 flex space-x-2">
-                  <input
-                    placeholder="Введите своё увлечение"
-                    value={newHobby}
-                    onChange={(e) => setNewHobby(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-orange-700 rounded bg-gray-800 text-orange-100"
-                  />
-                </div>
-              )}
-            </div>
+            <button
+              onClick={handleLogout}
+              className="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded transition"
+            >
+              Выйти из аккаунта
+            </button>
           </div>
         </details>
       </div>

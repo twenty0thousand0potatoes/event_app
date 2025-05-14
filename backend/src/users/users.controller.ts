@@ -59,12 +59,14 @@ export class UsersController {
     }
 
     const subscription = await this.stripeService.createSubscription(customer.id, priceId);
-
  
     let clientSecret = null;
-    if (typeof subscription.latest_invoice !== 'string' && subscription.latest_invoice && 'payment_intent' in subscription.latest_invoice) {
+    if (typeof subscription.latest_invoice !== 'string' && subscription.latest_invoice) {
       // @ts-ignore
-      clientSecret = subscription.latest_invoice.payment_intent.client_secret;
+      if ('payment_intent' in subscription.latest_invoice && subscription.latest_invoice.payment_intent) {
+        // @ts-ignore
+        clientSecret = subscription.latest_invoice.payment_intent.client_secret;
+      }
     }
 
     return {
@@ -74,7 +76,7 @@ export class UsersController {
     };
   }
 
-  @Get('me/subscription')
+  @Get('me/subscription') 
   async getSubscriptionStatus(@Request() req) {
     return this.usersService.getSubscriptionStatus(req.user.sub);
   }

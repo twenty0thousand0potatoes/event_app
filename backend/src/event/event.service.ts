@@ -57,13 +57,25 @@ export class EventService {
   async createEvent(eventData: Partial<Event>, user: any): Promise<Event> {
     const eventRepository = this.dataSource.getRepository(Event);
 
-    if (user.role === 'user' && eventData.maxParticipants && eventData.maxParticipants > 50) {
-      throw new ForbiddenException('Обычные пользователи не могут создавать мероприятия с более чем 50 участниками');
+    if (user.role === 'user') {
+      if (!user.isPlusSubscriber) {
+        if (eventData.type === 'premium') {
+          throw new ForbiddenException('Мероприятия типа "Премиум" доступны только для пользователей с подпиской Plus');
+        }
+        if (eventData.price && eventData.price > 0) {
+          throw new ForbiddenException('Платные мероприятия доступны только для пользователей с подпиской Plus');
+        }
+      }
+      if (eventData.maxParticipants && eventData.maxParticipants > 50) {
+        throw new ForbiddenException('Обычные пользователи не могут создавать мероприятия с более чем 50 участниками');
+      }
     }
 
     const event = eventRepository.create({
       ...eventData,
       creator: { id: user.sub },
+      latitude: eventData.latitude,
+      longitude: eventData.longitude,
     });
 
     return eventRepository.save(event);

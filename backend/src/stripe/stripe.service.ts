@@ -9,7 +9,7 @@ export class StripeService {
   constructor() {
     this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
       apiVersion: '2025-04-30.basil',
-    });
+    }); 
   }
 
   async createCustomer(email: string): Promise<Stripe.Customer> {
@@ -18,14 +18,15 @@ export class StripeService {
       return customers.data[0];
     }
     return this.stripe.customers.create({ email });
-  }
+  } 
 
   async createSubscription(customerId: string, priceId: string): Promise<Stripe.Subscription> {
     return this.stripe.subscriptions.create({
       customer: customerId,
       items: [{ price: priceId }],
       payment_behavior: 'default_incomplete',
-      expand: ['latest_invoice.payment_intent'],
+      // Убрано expand, так как payment_intent может отсутствовать
+      // expand: ['latest_invoice.payment_intent'],
     });
   }
 

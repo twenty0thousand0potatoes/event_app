@@ -27,6 +27,12 @@ export class Event {
   @Column({ type: 'varchar', length: 255, nullable: true })
   imageUrl?: string;
 
+  @Column({ type: 'float', nullable: true })
+  latitude?: number;
+
+  @Column({ type: 'float', nullable: true })
+  longitude?: number;
+
   @ManyToOne(() => User, user => user.events, { eager: true })
   creator: User;
 
