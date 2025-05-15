@@ -2,14 +2,24 @@
 import { useEffect, useRef, useState } from 'react'
 
 interface YandexMapProps {
+  initialLatitude?: number
+  initialLongitude?: number
   onLocationSelect?: (latitude: number, longitude: number) => void
 }
 
-export default function YandexMap({ onLocationSelect }: YandexMapProps) {
+export default function YandexMap({ initialLatitude, initialLongitude, onLocationSelect }: YandexMapProps) {
   const mapRef = useRef<HTMLDivElement>(null)
   const [loaded, setLoaded] = useState(false)
-  const placemarkRef = useRef<any>(null)
+  const placemarksRef = useRef<any[]>([]) // Теперь храним массив меток
   const mapInstanceRef = useRef<any>(null)
+
+  // Координаты для случайных меток в районе Минска
+  const getRandomMinskCoords = () => {
+    const minskCenter = { lat: 53.9006, lon: 27.5590 }
+    // Случайное смещение в радиусе ~10 км
+    const offset = () => (Math.random() - 0.5) * 0.2
+    return [minskCenter.lat + offset(), minskCenter.lon + offset()]
+  }
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -20,43 +30,101 @@ export default function YandexMap({ onLocationSelect }: YandexMapProps) {
       (window as any).ymaps.ready(() => {
         const ymaps = (window as any).ymaps
 
+        const centerLat = initialLatitude ?? 53.9006
+        const centerLon = initialLongitude ?? 27.5590
+
         const map = new ymaps.Map(mapRef.current, {
-          center: [53.9006, 27.5590], // Центр Минска
+          center: [centerLat, centerLon],
           zoom: 12,
           controls: ['zoomControl', 'fullscreenControl'],
         })
 
         mapInstanceRef.current = map
 
-        const placemark = new ymaps.Placemark(
-          [53.893009, 27.567444],
-          {
-            balloonContent: '<strong>Фестиваль в центре Минска</strong><br/>14:00, 25 мая',
-            hintContent: 'Мероприятие: Фестиваль',
-          },
-          {
-            preset: 'islands#orangeIcon',
-            draggable: true,
+        // Если координаты не переданы, создаем несколько случайных меток
+        if (!initialLatitude || !initialLongitude) {
+          const placemarksCount = 5 // Количество меток
+          
+          for (let i = 0; i < placemarksCount; i++) {
+            const coords = getRandomMinskCoords()
+            const placemark = new ymaps.Placemark(
+              coords,
+              {
+                balloonContent: `<strong>Место ${i+1}</strong>`,
+                hintContent: `Место ${i+1}`,
+              },
+              {
+                preset: 'islands#blueIcon',
+                draggable: !!onLocationSelect, // Делаем перетаскиваемыми, если есть обработчик
+              }
+            )
+
+            if (onLocationSelect) {
+              placemark.events.add('dragend', function (e: any) {
+                const coords = e.get('target').geometry.getCoordinates()
+                onLocationSelect(coords[0], coords[1])
+              })
+            }
+
+            map.geoObjects.add(placemark)
+            placemarksRef.current.push(placemark)
           }
-        )
+        } else {
+          // Если координаты переданы, создаем одну метку
+          const placemark = new ymaps.Placemark(
+            [initialLatitude, initialLongitude],
+            {
+              balloonContent: '<strong>Место проведения мероприятия</strong>',
+              hintContent: 'Место проведения',
+            },
+            {
+              preset: 'islands#blueIcon',
+              draggable: !!onLocationSelect,
+            }
+          )
 
-        placemarkRef.current = placemark
-        map.geoObjects.add(placemark)
-
-        placemark.events.add('dragend', function (e: any) {
-          const coords = e.get('target').geometry.getCoordinates()
           if (onLocationSelect) {
-            onLocationSelect(coords[0], coords[1])
+            placemark.events.add('dragend', function (e: any) {
+              const coords = e.get('target').geometry.getCoordinates()
+              onLocationSelect(coords[0], coords[1])
+            })
           }
-        })
 
-        map.events.add('click', function (e: any) {
-          const coords = e.get('coords')
-          placemark.geometry.setCoordinates(coords)
-          if (onLocationSelect) {
-            onLocationSelect(coords[0], coords[1])
-          }
-        })
+          map.geoObjects.add(placemark)
+          placemarksRef.current.push(placemark)
+        }
+
+        // Обработчик клика по карте (добавляет новую метку)
+        if (!initialLatitude || !initialLongitude) {
+          map.events.add('click', function (e: any) {
+            const coords = e.get('coords')
+            const placemark = new ymaps.Placemark(
+              coords,
+              {
+                balloonContent: '<strong>Новая метка</strong>',
+                hintContent: 'Новая метка',
+              },
+              {
+                preset: 'islands#redIcon',
+                draggable: !!onLocationSelect,
+              }
+            )
+
+            if (onLocationSelect) {
+              placemark.events.add('dragend', function (e: any) {
+                const coords = e.get('target').geometry.getCoordinates()
+                onLocationSelect(coords[0], coords[1])
+              })
+            }
+
+            map.geoObjects.add(placemark)
+            placemarksRef.current.push(placemark)
+            
+            if (onLocationSelect) {
+              onLocationSelect(coords[0], coords[1])
+            }
+          })
+        }
 
         setLoaded(true)
       })
@@ -77,7 +145,7 @@ export default function YandexMap({ onLocationSelect }: YandexMapProps) {
       script.onload = initMap
       document.body.appendChild(script)
     }
-  }, [loaded, onLocationSelect])
+  }, [loaded, onLocationSelect, initialLatitude, initialLongitude])
 
   return <div ref={mapRef} className="w-full h-96 rounded-2xl overflow-hidden" />
 }

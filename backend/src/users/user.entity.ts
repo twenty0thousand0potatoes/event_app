@@ -46,7 +46,7 @@ export class User {
   @OneToMany(() => UserHobby, (userHobby) => userHobby.user)
   hobbies: UserHobby[];
 
-  @OneToMany(() => Event, (event) => event.creator)
+  @OneToMany(() => Event, (event) => event.creator) 
   events: Event[];
 
   @Column({ default: false })

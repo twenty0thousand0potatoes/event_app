@@ -17,6 +17,8 @@ import { join } from 'path';
 import { HobbyModule } from './hobby/hobby.module';
 import { Event } from './event/event.entity';
 import { EventModule } from './event/event.module';
+import { ModeratorModule } from './moderator/moderator.module';
+import { EventPhoto } from './event/event-photo.entity';
 
 @Module({
   imports: [
@@ -32,7 +34,7 @@ import { EventModule } from './event/event.module';
       username: 'postgres',
       password: 'password',
       database: 'test_app',
-      entities: [User, Event, Hobby, UserHobby],
+      entities: [User, Event, Hobby, UserHobby, EventPhoto],
       synchronize: true,
     }),
     RedisModule,
@@ -43,6 +45,7 @@ import { EventModule } from './event/event.module';
     }),
     HobbyModule,
     EventModule,
+    ModeratorModule,
   ],
   controllers: [AppController],
   providers: [AppService],

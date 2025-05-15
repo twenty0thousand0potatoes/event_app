@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Post, Body, UseGuards, Req, Param, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Query, Post, Body, UseGuards, Req, Param, UseInterceptors, UploadedFile, UploadedFiles } from '@nestjs/common';
 import { EventService } from './event.service';
 import { Event } from './event.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -6,9 +6,11 @@ import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Roles as Role } from '../auth/roles.enum';
 import { Request } from 'express';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { CreateEventDto } from '../auth/dto/create-event.dto';
+
 
 @Controller('events')
 export class EventController {
@@ -37,14 +39,6 @@ export class EventController {
     return this.eventService.getEventById(Number(id));
   }
 
-  @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.USER, Role.ADMIN, Role.MODERATOR)
-  async createEvent(@Body() eventData: Partial<Event>, @Req() req: Request): Promise<Event> {
-    const user = req.user;
-    return this.eventService.createEvent(eventData, user);
-  }
-
   @Post('upload')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.USER, Role.ADMIN, Role.MODERATOR)
@@ -66,9 +60,22 @@ export class EventController {
       },
     }),
   )
-  async uploadFile(@UploadedFile() file: Express.Multer.File) {
-    const url = `/uploads/${file.filename}`;
-    return { url };
+  async uploadPhoto(
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: Request,
+  ): Promise<{ url: string }> {
+    return { url: `/uploads/${file.filename}` };
+  }
+
+  @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.USER, Role.ADMIN, Role.MODERATOR)
+  async createEvent(
+    @Body() eventData: CreateEventDto,
+    @Req() req: Request,
+  ): Promise<Event> {
+    const user = req.user;
+    return this.eventService.createEvent(eventData, user);
   }
 
   @Get('all')

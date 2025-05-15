@@ -154,21 +154,23 @@ export default function EventsPage() {
               <p className="text-center text-orange-300 py-8">Мероприятий не найдено</p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredEvents.map((event) => (
-                  <EventCard
-                    key={event.id}
-                    event={{
-                      ...event,
-                      title: typeof event.title === "string" ? highlightMatch(event.title, searchTerm) : event.title,
-                      creator: event.creator
-                        ? {
-                            ...event.creator,
-                            username: highlightMatch(event.creator.username, searchTerm) as unknown as string,
-                          }
-                        : undefined,
-                    }}
-                  />
-                ))}
+{filteredEvents.map((event) => (
+  <EventCard
+    key={event.id}
+    event={{
+      ...event,
+      id: event.id, 
+      imageUrl: (event as any).mainPhotoUrl, 
+      title: typeof event.title === "string" ? highlightMatch(event.title, searchTerm) : event.title,
+      creator: event.creator
+        ? {
+            ...event.creator,
+            username: highlightMatch(event.creator.username, searchTerm) as unknown as string,
+          }
+        : undefined,
+    }}
+  />
+))}
               </div>
             )}
           </div>

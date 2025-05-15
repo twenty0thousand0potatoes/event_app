@@ -1,6 +1,8 @@
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { DataSource, SelectQueryBuilder } from 'typeorm';
 import { Event } from './event.entity';
+import { EventPhoto } from './event-photo.entity';
+import { CreateEventDto } from '../auth/dto/create-event.dto';
 
 interface EventFilters {
   type?: string;
@@ -44,6 +46,7 @@ export class EventService {
     const event = await eventRepository
       .createQueryBuilder('event')
       .leftJoinAndSelect('event.creator', 'creator')
+      .leftJoinAndSelect('event.photos', 'photos')
       .where('event.id = :id', { id })
       .getOne();
 
@@ -54,8 +57,9 @@ export class EventService {
     return event;
   }
 
-  async createEvent(eventData: Partial<Event>, user: any): Promise<Event> {
-    const eventRepository = this.dataSource.getRepository(Event);
+  async createEvent(eventData: CreateEventDto, user: any): Promise<Event> {
+    const maxPhotos = (user.role === 'organizer' || user.isPlusSubscriber) ? 7 : 3;
+    const { photos = [], imageUrl, ...eventDataWithoutPhotos } = eventData;
 
     if (user.role === 'user') {
       if (!user.isPlusSubscriber) {
@@ -71,14 +75,62 @@ export class EventService {
       }
     }
 
-    const event = eventRepository.create({
-      ...eventData,
-      creator: { id: user.sub },
-      latitude: eventData.latitude,
-      longitude: eventData.longitude,
-    });
+    if (photos.length > maxPhotos) {
+      throw new ForbiddenException(`Максимальное количество фото для вашего типа пользователя: ${maxPhotos}`);
+    }
 
-    return eventRepository.save(event);
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const eventRepository = queryRunner.manager.getRepository(Event);
+      const eventPhotoRepository = queryRunner.manager.getRepository(EventPhoto);
+
+      const event = eventRepository.create({
+        ...eventDataWithoutPhotos,
+        creator: { id: user.sub },
+        latitude: eventData.latitude,
+        longitude: eventData.longitude,
+      });
+
+      const savedEvent = await eventRepository.save(event);
+
+      if (photos.length > 0) {
+        const photoEntities = photos.map(url => {
+          const photo = new EventPhoto();
+          photo.url = url;
+          photo.event = savedEvent;
+          return photo;
+        });
+        await eventPhotoRepository.save(photoEntities);
+
+        // Set mainPhotoUrl to first photo URL if not set
+        if (!savedEvent.mainPhotoUrl) {
+          savedEvent.mainPhotoUrl = photos[0];
+          await eventRepository.save(savedEvent);
+        }
+      }
+
+      await queryRunner.commitTransaction();
+
+      const eventWithPhotos = await eventRepository.findOne({
+        where: { id: savedEvent.id },
+        relations: ['creator', 'photos'],
+      });
+
+      if (!eventWithPhotos) {
+        throw new NotFoundException('Мероприятие не найдено');
+      }
+
+      return eventWithPhotos;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
 
@@ -87,6 +139,7 @@ export class EventService {
     return eventRepository
       .createQueryBuilder('event')
       .leftJoinAndSelect('event.creator', 'creator')
+      .leftJoinAndSelect('event.photos', 'photos')
       .getMany();
   }
 }
