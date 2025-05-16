@@ -1,9 +1,18 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException, ConflictException } from '@nestjs/common';
 import { DataSource, SelectQueryBuilder } from 'typeorm';
 import { Event } from './event.entity';
 import { EventPhoto } from './event-photo.entity';
 import { CreateEventDto } from '../auth/dto/create-event.dto';
+import { UpdateEventDto } from 'src/auth/dto/update-event.dto';
+import { EventSubscription } from './event-subscription.entity';
 
+interface EventFilters {
+  type?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  sortBy?: 'date' | 'price';
+  sortOrder?: 'asc' | 'desc';
+}
 interface EventFilters {
   type?: string;
   minPrice?: number;
@@ -41,12 +50,32 @@ export class EventService {
     return query.getMany();
   }
 
+  async getEventsCreatedByUser(userId: number): Promise<Event[]> {
+    const eventRepository = this.dataSource.getRepository(Event);
+    return eventRepository
+      .createQueryBuilder('event')
+      .leftJoinAndSelect('event.creator', 'creator')
+      .leftJoinAndSelect('event.photos', 'photos')
+      .where('creator.id = :userId', { userId })
+      .getMany();
+  }
+
+  async getEventsSubscribedByUser(userId: number): Promise<Event[]> {
+    const eventSubscriptionRepository = this.dataSource.getRepository(EventSubscription);
+    const subscriptions = await eventSubscriptionRepository.find({
+      where: { user: { id: userId } },
+      relations: ['event', 'event.creator', 'event.photos'],
+    });
+    return subscriptions.map(sub => sub.event);
+  }
+
   async getEventById(id: number): Promise<Event> {
     const eventRepository = this.dataSource.getRepository(Event);
     const event = await eventRepository
       .createQueryBuilder('event')
       .leftJoinAndSelect('event.creator', 'creator')
       .leftJoinAndSelect('event.photos', 'photos')
+      .leftJoinAndSelect('event.subscriptions', 'subscriptions')
       .where('event.id = :id', { id })
       .getOne();
 
@@ -55,6 +84,104 @@ export class EventService {
     }
 
     return event;
+  }
+
+  async subscribeToEvent(userId: number, eventId: number): Promise<EventSubscription> {
+    const eventRepository = this.dataSource.getRepository(Event);
+    const subscriptionRepository = this.dataSource.getRepository(EventSubscription);
+    const userRepository = this.dataSource.getRepository('User');
+
+    const event = await eventRepository.findOne({
+      where: { id: eventId },
+      relations: ['subscriptions'],
+    });
+
+    if (!event) {
+      throw new NotFoundException('Мероприятие не найдено');
+    }
+
+    const user = await userRepository.findOneBy({ id: userId });
+    if (!user) {
+      throw new NotFoundException('Пользователь не найден');
+    }
+
+    // Check if user already subscribed
+    const existingSubscription = await subscriptionRepository.findOne({
+      where: { user: { id: userId }, event: { id: eventId } },
+    });
+    if (existingSubscription) {
+      throw new ConflictException('Вы уже подписаны на это мероприятие');
+    }
+
+    // Check if max participants reached
+    if (event.subscriptions.length >= event.maxParticipants) {
+      throw new ForbiddenException('Свободных мест нет');
+    }
+
+    const subscription = subscriptionRepository.create({
+      user,
+      event,
+    });
+
+    return subscriptionRepository.save(subscription);
+  }
+
+  async updateEvent(id: number, updateEventDto: UpdateEventDto): Promise<Event> {
+    const eventRepository = this.dataSource.getRepository(Event);
+    const eventPhotoRepository = this.dataSource.getRepository(EventPhoto);
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const event = await queryRunner.manager.getRepository(Event).findOne({
+        where: { id },
+        relations: ['photos'],
+      });
+
+      if (!event) {
+        throw new NotFoundException('Мероприятие не найдено');
+      }
+
+      // Update event fields except photos
+      const { photos, ...eventData } = updateEventDto;
+      Object.assign(event, eventData);
+
+      // Remove existing photos if photos are provided in update
+      if (photos) {
+        if (event.photos && event.photos.length > 0) {
+          await queryRunner.manager.getRepository(EventPhoto).remove(event.photos);
+        }
+
+        // Add new photos
+        const photoEntities = photos.map(url => {
+          const photo = new EventPhoto();
+          photo.url = url;
+          photo.event = event;
+          return photo;
+        });
+        await queryRunner.manager.getRepository(EventPhoto).save(photoEntities);
+
+        // Update mainPhotoUrl if photos exist
+        if (photos.length > 0) {
+          event.mainPhotoUrl = photos[0];
+        } else {
+          event.mainPhotoUrl = null;
+        }
+      }
+
+      const savedEvent = await queryRunner.manager.getRepository(Event).save(event);
+
+      await queryRunner.commitTransaction();
+
+      return savedEvent;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async createEvent(eventData: CreateEventDto, user: any): Promise<Event> {

@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { User } from '../users/user.entity';
 import { EventPhoto } from './event-photo.entity';
+import { EventSubscription } from './event-subscription.entity';
 
 @Entity()
 export class Event {
@@ -39,6 +40,9 @@ export class Event {
 
   @OneToMany(() => EventPhoto, photo => photo.event, { cascade: true, eager: true })
   photos: EventPhoto[];
+
+  @OneToMany(() => EventSubscription, subscription => subscription.event)
+  subscriptions: EventSubscription[];
 
   @CreateDateColumn()
   createdAt: Date;

@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Post, Body, UseGuards, Req, Param, UseInterceptors, UploadedFile, UploadedFiles } from '@nestjs/common';
+import { Controller, Get, Query, Post, Body, UseGuards, Req, Param, UseInterceptors, UploadedFile, UploadedFiles, Put, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { EventService } from './event.service';
 import { Event } from './event.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -10,6 +10,9 @@ import { FilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { CreateEventDto } from '../auth/dto/create-event.dto';
+import { UpdateEventDto } from '../auth/dto/update-event.dto';
+import { User } from 'src/users/user.entity';
+import { ignoreElements } from 'rxjs';
 
 
 @Controller('events')
@@ -18,7 +21,7 @@ export class EventController {
 
   @Get()
   async getEvents(
-    @Query('type') type?: string,
+    @Query('type') type?: string, 
     @Query('minPrice') minPrice?: string,
     @Query('maxPrice') maxPrice?: string,
     @Query('sortBy') sortBy?: 'date' | 'price',
@@ -34,9 +37,46 @@ export class EventController {
     return this.eventService.findEvents(filters);
   }
 
+  @Get('mine')
+  @UseGuards(JwtAuthGuard)
+  async getMyEvents(@Req() req: Request): Promise<{ createdEvents: Event[]; subscribedEvents: Event[] }> {
+    const user = req.user as any;
+    const createdEvents = await this.eventService.getEventsCreatedByUser(user.sub);
+    const subscribedEvents = await this.eventService.getEventsSubscribedByUser(user.sub);
+    return { createdEvents, subscribedEvents };
+  }
+
   @Get(':id')
   async getEventById(@Param('id') id: string): Promise<Event> {
     return this.eventService.getEventById(Number(id));
+  }
+
+  @Post(':id/subscribe')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.USER, Role.ADMIN, Role.MODERATOR)
+  async subscribeToEvent(@Param('id') id: string, @Req() req: Request) {
+    const user = req.user as any;
+    return this.eventService.subscribeToEvent(user.sub, Number(id));
+  }
+
+  @Put(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.USER, Role.ADMIN, Role.MODERATOR)
+  async updateEvent(
+    @Param('id') id: string,
+    @Body() updateEventDto: UpdateEventDto,
+    @Req() req: Request,
+  ): Promise<Event> {
+    const user = req.user as any;
+    const event = await this.eventService.getEventById(Number(id));
+    if (!event) {
+      throw new NotFoundException('Мероприятие не найдено');
+    }
+
+    if (event.creator.id !== user.sub) {
+      throw new ForbiddenException('Нет прав на редактирование этого мероприятия');
+    }
+    return this.eventService.updateEvent(Number(id), updateEventDto);
   }
 
   @Post('upload')

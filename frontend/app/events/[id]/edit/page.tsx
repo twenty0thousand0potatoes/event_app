@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import axios from "axios";
-import YandexMap from "../../../components/YandexMap";
+import YandexMap from "../../../../components/YandexMap";
 import { Toaster, toast } from "react-hot-toast";
 
-export default function CreateEventPage() {
+export default function EditEventPage() {
   const router = useRouter();
+  const params = useParams();
+  const eventId = params?.id;
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -22,36 +24,54 @@ export default function CreateEventPage() {
   const [uploading, setUploading] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isPlusSubscriber, setIsPlusSubscriber] = useState(false);
+  const [isCreator, setIsCreator] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const dragCounter = useRef(0);
   const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const res = await axios.get("http://localhost:3000/users/me", {
-          withCredentials: true,
-        });
+    if (!eventId) return;
 
-        setUserRole(res.data.role);
-        setIsPlusSubscriber(res.data.isPlusSubscriber || false);
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [eventRes, userRes] = await Promise.all([
+          axios.get(`http://localhost:3000/events/${eventId}`, { withCredentials: true }),
+          axios.get("http://localhost:3000/users/me", { withCredentials: true }),
+        ]);
+        const eventData = eventRes.data;
+        let userData = userRes.data;
+        
+        if (!userData.sub && userData.id) {
+          userData = { ...userData, sub: userData.id };
+        }
+
+        setTitle(eventData.title || "");
+        setDescription(eventData.description || "");
+        setDate(eventData.date ? new Date(eventData.date).toISOString().slice(0,16) : "");
+        setMaxParticipants(eventData.maxParticipants || 50);
+        setType(eventData.type || "regular");
+        setPrice(eventData.price || 0);
+        setPhotoUrls(eventData.photos?.map((p: any) => p.url) || []);
+        setLatitude(eventData.latitude || null);
+        setLongitude(eventData.longitude || null);
+        setUserRole(userData.role);
+        setIsPlusSubscriber(userData.isPlusSubscriber || false);
+        setIsCreator(Number(userData.sub) === Number(eventData.creator?.id));
+
+        if (Number(userData.sub) !== Number(eventData.creator?.id)) {
+          toast.error("У вас нет прав на редактирование этого мероприятия");
+        }
+      } catch (err: any) {
+        toast.error(err.response?.data?.message || "Ошибка загрузки данных");
+      } finally {
         setLoading(false);
-      } catch {
-        toast.error("Требуется авторизация");
-        router.push("/login?reason=unauthorized");
       }
     };
 
-    fetchUser();
-  }, [router]);
-
-  useEffect(() => {
-    if (userRole && !["user", "admin", "moderator", "organizer"].includes(userRole)) {
-      toast.error("Недостаточно прав");
-      router.push("/login?reason=unauthorized");
-    }
-  }, [userRole, router]);
+    fetchData();
+  }, [eventId]);
 
   const maxPhotos = (userRole === "organizer" || isPlusSubscriber) ? 7 : 3;
 
@@ -140,6 +160,12 @@ export default function CreateEventPage() {
     e.preventDefault();
     setLoading(true);
 
+    if (!isCreator) {
+      toast.error("У вас нет прав на редактирование этого мероприятия");
+      setLoading(false);
+      return;
+    }
+
     if (userRole === "user" && !isPlusSubscriber) {
       if (type === "premium") {
         toast.error('Мероприятия типа "Премиум" доступны только для пользователей с подпиской Plus');
@@ -154,8 +180,8 @@ export default function CreateEventPage() {
     }
 
     try {
-      const response = await axios.post(
-        "http://localhost:3000/events",
+      const response = await axios.put(
+        `http://localhost:3000/events/${eventId}`,
         {
           title,
           description,
@@ -170,22 +196,39 @@ export default function CreateEventPage() {
         { withCredentials: true }
       );
 
-      toast.success("Мероприятие успешно создано!");
+      toast.success("Мероприятие успешно обновлено!");
       setTimeout(() => {
-        router.push("/events");
+        router.push(`/events/${eventId}`);
       }, 1500);
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Ошибка при создании мероприятия");
+      toast.error(err.response?.data?.message || "Ошибка при обновлении мероприятия");
       setLoading(false);
     }
   };
 
-  if (loading) {
+  if (loading && !isCreator) {
     return (
       <div className="min-h-screen flex items-center justify-center text-white bg-gradient-to-b from-black to-gray-900">
         <div className="animate-pulse flex flex-col items-center">
           <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-          <p>Загрузка данных...</p>
+          <p>Загрузка...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isCreator) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-white bg-gradient-to-b from-black to-gray-900 p-4">
+        <div className="max-w-md w-full bg-gray-800 p-6 rounded-xl text-center">
+          <h2 className="text-2xl font-bold text-orange-500 mb-4">Доступ запрещен</h2>
+          <p className="mb-6">У вас нет прав для редактирования этого мероприятия</p>
+          <button
+            onClick={() => router.push("/events")}
+            className="px-6 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors"
+          >
+            Вернуться к мероприятиям
+          </button>
         </div>
       </div>
     );
@@ -202,7 +245,7 @@ export default function CreateEventPage() {
       }} />
       
       <div className="max-w-4xl mx-auto bg-gray-800 p-8 rounded-2xl shadow-lg">
-        <h1 className="text-3xl font-bold mb-6 text-orange-500">Создать новое мероприятие</h1>
+        <h1 className="text-3xl font-bold mb-6 text-orange-500">Редактировать мероприятие</h1>
         
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -214,7 +257,7 @@ export default function CreateEventPage() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="w-full p-3 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-gray-700 text-white"
-                placeholder="Введите название мероприятия"
+                placeholder="Введите название"
               />
             </div>
             
@@ -237,7 +280,7 @@ export default function CreateEventPage() {
               onChange={(e) => setDescription(e.target.value)}
               className="w-full p-3 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-gray-700 text-white"
               rows={5}
-              placeholder="Расскажите подробнее о вашем мероприятии"
+              placeholder="Расскажите о вашем мероприятии"
             />
           </div>
           
@@ -282,23 +325,22 @@ export default function CreateEventPage() {
           </div>
           
           <div>
-            <label className="block mb-2 font-medium">Место проведения *</label>
-            <div className="border border-gray-600 rounded-lg overflow-hidden h-64">
+            <label className="block mb-2 font-medium">Место проведения</label>
+            <div className="border border-gray-600 rounded-lg overflow-hidden">
               <YandexMap 
                 onLocationSelect={(lat, lon) => { 
                   setLatitude(lat); 
                   setLongitude(lon); 
                   toast.success("Место выбрано");
                 }} 
+                initialLatitude={latitude || undefined} 
+                initialLongitude={longitude || undefined} 
               />
             </div>
             {latitude && longitude && (
               <p className="mt-2 text-gray-400">
-                Выбранные координаты: {latitude.toFixed(6)}, {longitude.toFixed(6)}
+                Координаты: {latitude.toFixed(6)}, {longitude.toFixed(6)}
               </p>
-            )}
-            {!latitude && !longitude && (
-              <p className="mt-2 text-orange-400">Пожалуйста, выберите место на карте</p>
             )}
           </div>
           
@@ -326,7 +368,7 @@ export default function CreateEventPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                     </svg>
                     <p className="mb-1">Перетащите фото сюда или кликните для выбора</p>
-                    <p className="text-sm text-gray-400">Поддерживаются JPG, PNG (макс. {maxPhotos} фото)</p>
+                    <p className="text-sm text-gray-400">Максимум {maxPhotos} фото</p>
                   </>
                 )}
               </div>
@@ -367,7 +409,7 @@ export default function CreateEventPage() {
           <div className="pt-4 flex justify-end space-x-4">
             <button
               type="button"
-              onClick={() => router.push("/events")}
+              onClick={() => router.push(`/events/${eventId}`)}
               className="px-6 py-2 border border-gray-600 rounded-lg hover:bg-gray-700 transition-colors"
               disabled={loading || uploading}
             >
@@ -375,7 +417,7 @@ export default function CreateEventPage() {
             </button>
             <button
               type="submit"
-              disabled={loading || uploading || !latitude || !longitude}
+              disabled={loading || uploading}
               className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 transition-colors flex items-center"
             >
               {loading ? (
@@ -384,9 +426,9 @@ export default function CreateEventPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Создание...
+                  Сохранение...
                 </>
-              ) : "Создать мероприятие"}
+              ) : "Сохранить изменения"}
             </button>
           </div>
         </form>

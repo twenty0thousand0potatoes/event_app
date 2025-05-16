@@ -19,6 +19,8 @@ import { Event } from './event/event.entity';
 import { EventModule } from './event/event.module';
 import { ModeratorModule } from './moderator/moderator.module';
 import { EventPhoto } from './event/event-photo.entity';
+import { EventSubscriber } from 'typeorm';
+import { EventSubscription } from './event/event-subscription.entity';
 
 @Module({
   imports: [
@@ -34,7 +36,7 @@ import { EventPhoto } from './event/event-photo.entity';
       username: 'postgres',
       password: 'password',
       database: 'test_app',
-      entities: [User, Event, Hobby, UserHobby, EventPhoto],
+      entities: [User, Event, Hobby, UserHobby, EventPhoto, EventSubscription],
       synchronize: true,
     }),
     RedisModule,

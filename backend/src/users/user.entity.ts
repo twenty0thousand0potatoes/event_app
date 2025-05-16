@@ -8,6 +8,7 @@ import {
 import { Roles } from 'src/auth/roles.enum';
 import { UserHobby } from '../hobby/user-hobby.entity';
 import { Event } from 'src/event/event.entity';
+import { EventSubscription } from 'src/event/event-subscription.entity';
 
 @Entity()
 @Unique(['username'])
@@ -48,6 +49,9 @@ export class User {
 
   @OneToMany(() => Event, (event) => event.creator) 
   events: Event[];
+
+  @OneToMany(() => EventSubscription, subscription => subscription.user)
+  eventSubscriptions: EventSubscription[];
 
   @Column({ default: false })
   isPlusSubscriber: boolean;

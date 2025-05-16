@@ -13,7 +13,7 @@ export class MailService {
             text,
             html,
           });
-          console.log('✅ Email sent:', info);
+
           return info;
         } catch (error) {
           console.error('❌ Error sending email:', error); 

@@ -4,10 +4,18 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import SubscriptionForm from "../../components/SubscriptionForm";
+import Link from "next/link";
 
 interface HobbyData {
   id: number;
   name: string;
+}
+
+interface Event {
+  id: number;
+  title: string;
+  description: string;
+  date: string;
 }
 
 interface UserData {
@@ -42,12 +50,17 @@ export default function DashboardPage() {
   const [subscriptionClientSecret, setSubscriptionClientSecret] = useState<string | null>(null);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
 
+  // New state for meetings
+  const [createdEvents, setCreatedEvents] = useState<Event[]>([]);
+  const [subscribedEvents, setSubscribedEvents] = useState<Event[]>([]);
+  const [activeMeetingTab, setActiveMeetingTab] = useState<"subscribed" | "created">("subscribed");
+
   const router = useRouter();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [userRes, hobbiesRes, allHobbiesRes] = await Promise.all([
+        const [userRes, hobbiesRes, allHobbiesRes, meetingsRes] = await Promise.all([
           axios.get("http://localhost:3000/users/me", {
             withCredentials: true,
           }),
@@ -55,10 +68,11 @@ export default function DashboardPage() {
             withCredentials: true,
           }),
           axios.get("http://localhost:3000/hobbies", { withCredentials: true }),
+          axios.get("http://localhost:3000/events/mine", { withCredentials: true }),
         ]);
 
         const userData = userRes.data as UserData;
-        console.log(userData);
+
         setUser({ ...userData, hobbies: hobbiesRes.data });
         setUsername(userData.username);
         setCity(userData.city || "");
@@ -67,6 +81,8 @@ export default function DashboardPage() {
         setDescription(userData.description || "");
         setHobbies(hobbiesRes.data);
         setAllHobbies(allHobbiesRes.data.map((h: HobbyData) => h.name));
+        setCreatedEvents(meetingsRes.data.createdEvents);
+        setSubscribedEvents(meetingsRes.data.subscribedEvents);
       } catch {
         router.push("/login?reason=unauthorized");
       } finally {
@@ -309,309 +325,512 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black px-4 py-6 text-orange-100 relative">
-      {/* Сообщения */}
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black px-4 py-8 text-gray-100 relative">
+
       {showMessagePopup && (
-        <div className={`fixed top-4 left-1/2 transform -translate-x-1/2 z-50 px-4 py-2 rounded-md ${
-          messageType === "success" ? "bg-green-600" : "bg-red-600"
-        } text-white shadow-lg transition-opacity duration-300`}>
-          {message}
+        <div className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-lg shadow-xl ${
+          messageType === "success" 
+            ? "bg-gradient-to-r from-green-600 to-emerald-700" 
+            : "bg-gradient-to-r from-red-600 to-rose-700"
+        } text-white flex items-center space-x-2 animate-fade-in`}>
+          {messageType === "success" ? (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          ) : (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          )}
+          <span>{message}</span>
         </div>
       )}
 
-      <div className="max-w-md mx-auto space-y-6">
-        {/* Профиль пользователя */}
-        <div className="bg-gray-900 p-6 rounded-2xl shadow-lg border border-orange-800">
-          <div className="flex items-center space-x-4">
-            <div className="relative">
-              <img
-                src={user?.avatar || "/placeholder.png"}
-                alt="Аватар"
-                className="w-16 h-16 rounded-full object-cover border-2 border-orange-500"
-              />
-              <label className="absolute bottom-0 right-0 bg-orange-500 text-black p-1 rounded-full cursor-pointer hover:bg-orange-600 transition text-xs">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarChange}
-                  className="hidden"
+      <div className="max-w-4xl mx-auto space-y-8">
+        {/* Шапка профиля */}
+        <div className="flex flex-col md:flex-row gap-6">
+          {/* Блок аватара */}
+          <div className="bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-700 w-full md:w-1/3">
+            <div className="flex flex-col items-center">
+              <div className="relative group">
+                <img
+                  src={user?.avatar || "/placeholder.png"}
+                  alt="Аватар"
+                  className="w-32 h-32 rounded-full object-cover border-4 border-orange-500 shadow-lg"
                 />
-                📷
-              </label>
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-orange-400">{username}</h1>
-              <p className="text-orange-300">
-                {city && `${city}, `}
-                {age && `${age} лет`}
-              </p>
-            </div>
-          </div>
-
-          {/* Блок с хобби */}
-          <div className="mt-4">
-            <h2 className="text-lg font-semibold mb-2 text-orange-400">Мои увлечения</h2>
-            {hobbies.length > 0 ? (
-              <div className="flex flex-wrap gap-2 mb-4">
-                {hobbies.map((h) => (
-                  <span
-                    key={h.id}
-                    className="px-3 py-1 bg-orange-500 bg-opacity-20 text-orange-200 rounded-full text-sm flex items-center space-x-1 border border-orange-500 border-opacity-50"
-                  >
-                    <span>{h.name}</span>
-                    <button
-                      onClick={() => removeHobby(h.id)}
-                      className="text-orange-300 hover:text-orange-100 ml-1 text-xs"
-                    >
-                      ✕
-                    </button>
-                  </span>
-                ))}
+                <label className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                  <svg className="w-8 h-8 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarChange}
+                    className="hidden"
+                  />
+                </label>
               </div>
-            ) : (
-              <p className="text-orange-300 text-sm mb-4">У вас пока нет увлечений</p>
-            )}
-
-            <div className="space-y-2">
-              <div className="flex space-x-2">
-                <select
-                  value={isCustomHobby ? "__custom__" : newHobby}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value === "__custom__") {
-                      setIsCustomHobby(true);
-                      setNewHobby("");
-                    } else {
-                      setIsCustomHobby(false);
-                      setNewHobby(value);
-                    }
-                  }}
-                  className="flex-1 px-3 py-2 border border-orange-700 rounded bg-gray-800 text-orange-100"
-                >
-                  <option value="">Выберите из списка...</option>
-                  {allHobbies.map((h, idx) => (
-                    <option key={idx} value={h}>
-                      {h}
-                    </option>
-                  ))}
-                  <option value="__custom__">Добавить своё</option>
-                </select>
+              
+              <div className="mt-4 text-center">
+                <h1 className="text-2xl font-bold text-orange-400">{username}</h1>
+                <div className="flex justify-center space-x-4 mt-1">
+                  {city && (
+                    <span className="flex items-center text-gray-300">
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      {city}
+                    </span>
+                  )}
+                  {age && (
+                    <span className="flex items-center text-gray-300">
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {age} лет
+                    </span>
+                  )}
+                </div>
               </div>
-
-              {isCustomHobby && (
+              
+              {/* Ссылка на аватар */}
+              <div className="w-full mt-4">
+                <label className="block text-sm font-medium mb-1 text-gray-300">Ссылка на аватар</label>
                 <div className="flex space-x-2">
                   <input
-                    placeholder="Введите своё увлечение"
-                    value={newHobby}
-                    onChange={(e) => setNewHobby(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-orange-700 rounded bg-gray-800 text-orange-100"
+                    value={avatarUrl}
+                    onChange={(e) => setAvatarUrl(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-600 rounded-lg bg-gray-700 text-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="https://..."
                   />
+                  <button
+                    onClick={updateAvatarByUrl}
+                    className="bg-orange-500 hover:bg-orange-600 text-black px-4 py-2 rounded-lg transition transform hover:scale-105"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </button>
                 </div>
-              )}
-
-              <button
-                onClick={saveHobbies}
-                disabled={!newHobby.trim()}
-                className={`w-full py-2 rounded transition ${
-                  !newHobby.trim()
-                    ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                    : "bg-orange-500 hover:bg-orange-600 text-black"
-                }`}
-              >
-                Сохранить увлечение
-              </button>
+              </div>
             </div>
           </div>
 
-          <div className="mt-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-orange-400">Описание</h2>
-              <button 
-                onClick={() => setShowDescriptionInput(!showDescriptionInput)}
-                className="text-orange-500 hover:text-orange-400 text-sm"
-              >
-                {showDescriptionInput ? "Отмена" : "Добавить описание >"}
-              </button>
-            </div>
-            
-            {!showDescriptionInput && description && (
-              <p className="mt-2 text-orange-200">{description}</p>
-            )}
-            
-            {showDescriptionInput && (
-              <div className="mt-2">
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full p-2 border border-orange-700 rounded bg-gray-800 text-orange-100"
-                  placeholder="Расскажите о себе..."
-                  rows={3}
-                />
-                <button
-                  onClick={updateProfile}
-                  className="mt-2 w-full bg-orange-500 hover:bg-orange-600 text-black py-2 rounded transition"
+          {/* Основная информация */}
+          <div className="bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-700 w-full md:w-2/3 space-y-6">
+            {/* Описание */}
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <h2 className="text-xl font-semibold text-orange-400">О себе</h2>
+                <button 
+                  onClick={() => setShowDescriptionInput(!showDescriptionInput)}
+                  className="text-orange-500 hover:text-orange-400 text-sm flex items-center"
                 >
-                  Сохранить
+                  {showDescriptionInput ? (
+                    <>
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      Отмена
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      {description ? "Редактировать" : "Добавить"}
+                    </>
+                  )}
                 </button>
               </div>
-            )}
+              
+              {!showDescriptionInput && description ? (
+                <p className="text-gray-300 whitespace-pre-line">{description}</p>
+              ) : !showDescriptionInput ? (
+                <p className="text-gray-500 italic">Расскажите о себе...</p>
+              ) : (
+                <div className="space-y-2">
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="w-full p-3 border border-gray-600 rounded-lg bg-gray-700 text-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="Расскажите о себе..."
+                    rows={4}
+                  />
+                  <button
+                    onClick={updateProfile}
+                    className="bg-orange-500 hover:bg-orange-600 text-black py-2 px-4 rounded-lg transition transform hover:scale-105 flex items-center justify-center"
+                  >
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                    </svg>
+                    Сохранить
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Хобби */}
+            <div>
+              <h2 className="text-xl font-semibold mb-3 text-orange-400">Мои увлечения</h2>
+              {hobbies.length > 0 ? (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {hobbies.map((h) => (
+                    <span
+                      key={h.id}
+                      className="px-3 py-1 bg-orange-500 bg-opacity-20 text-orange-200 rounded-full text-sm flex items-center space-x-1 border border-orange-500 border-opacity-50 hover:bg-opacity-30 transition"
+                    >
+                      <span>{h.name}</span>
+                      <button
+                        onClick={() => removeHobby(h.id)}
+                        className="text-orange-300 hover:text-orange-100 ml-1 text-xs transition"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 italic mb-4">У вас пока нет увлечений</p>
+              )}
+
+              <div className="space-y-3">
+                <div className="flex space-x-2">
+                  <select
+                    value={isCustomHobby ? "__custom__" : newHobby}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === "__custom__") {
+                        setIsCustomHobby(true);
+                        setNewHobby("");
+                      } else {
+                        setIsCustomHobby(false);
+                        setNewHobby(value);
+                      }
+                    }}
+                    className="flex-1 px-3 py-2 border border-gray-600 rounded-lg bg-gray-700 text-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  >
+                    <option value="">Выберите из списка...</option>
+                    {allHobbies.map((h, idx) => (
+                      <option key={idx} value={h}>
+                        {h}
+                      </option>
+                    ))}
+                    <option value="__custom__">Добавить своё</option>
+                  </select>
+                </div>
+
+                {isCustomHobby && (
+                  <div className="flex space-x-2">
+                    <input
+                      placeholder="Введите своё увлечение"
+                      value={newHobby}
+                      onChange={(e) => setNewHobby(e.target.value)}
+                      className="flex-1 px-3 py-2 border border-gray-600 rounded-lg bg-gray-700 text-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    />
+                  </div>
+                )}
+
+                <button
+                  onClick={saveHobbies}
+                  disabled={!newHobby.trim()}
+                  className={`w-full py-2 rounded-lg transition flex items-center justify-center ${
+                    !newHobby.trim()
+                      ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                      : "bg-orange-500 hover:bg-orange-600 text-black transform hover:scale-105"
+                  }`}
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Добавить увлечение
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Подписка Plus */}
-        <div className="bg-gray-900 p-6 rounded-2xl shadow-lg border border-orange-800">
-          <h2 className="text-lg font-semibold mb-4 text-orange-400">Подписка Plus</h2>
-          {user?.isPlusSubscriber ? (
-            <p className="text-green-400 mb-2">
-              Ваша подписка активна до {user.plusSubscriptionExpiresAt ? new Date(user.plusSubscriptionExpiresAt).toLocaleDateString() : "неизвестно"}.
-            </p>
-          ) : (
-            <>
+        <div className="bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-700">
+          <div className="flex flex-col md:flex-row md:items-center justify-between">
+            <div className="mb-4 md:mb-0">
+              <h2 className="text-xl font-semibold text-orange-400">Подписка Plus</h2>
+              <p className="text-gray-300">Дополнительные возможности и привилегии</p>
+            </div>
+            
+            {user?.isPlusSubscriber ? (
+              <div className="bg-green-900 bg-opacity-30 border border-green-600 px-4 py-2 rounded-lg">
+                <p className="text-green-400 font-medium">
+                  <svg className="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Активна до {user.plusSubscriptionExpiresAt ? new Date(user.plusSubscriptionExpiresAt).toLocaleDateString() : "неизвестно"}
+                </p>
+              </div>
+            ) : (
               <button
                 onClick={openSubscriptionPopup}
-                className="w-full bg-orange-500 hover:bg-orange-600 text-black py-2 rounded transition"
+                className="bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-black font-bold py-3 px-6 rounded-lg shadow-lg transition transform hover:scale-105 flex items-center justify-center"
               >
-                Оформить подписку Plus
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Оформить Plus
               </button>
+            )}
+          </div>
 
-              {showSubscriptionPopup && (
-                <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-                  <div className="bg-gray-900 p-6 rounded-2xl shadow-lg border border-orange-800 max-w-sm w-full">
-                    {!showPaymentForm && (
-                      <>
-                        <h3 className="text-lg font-semibold mb-4 text-orange-400">Подтвердите оформление подписки</h3>
-                        <p className="mb-4 text-orange-200">Стоимость подписки: 2,99$ в месяц.</p>
-                        <div className="flex justify-end space-x-4">
-                          <button
-                            onClick={closeSubscriptionPopup}
-                            className="bg-gray-700 hover:bg-gray-600 text-orange-300 px-4 py-2 rounded transition"
-                          >
-                            Отмена
-                          </button>
-                          <button
-                            onClick={handleSubscribe}
-                            className="bg-orange-500 hover:bg-orange-600 text-black px-4 py-2 rounded transition"
-                          >
-                            Подтвердить
-                          </button>
+          {showSubscriptionPopup && (
+            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+              <div className="bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-700 max-w-md w-full animate-pop-in">
+                {!showPaymentForm && (
+                  <>
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-xl font-bold text-orange-400">Подписка Plus</h3>
+                      <button
+                        onClick={closeSubscriptionPopup}
+                        className="text-gray-400 hover:text-gray-200"
+                      >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div className="bg-gray-700 p-4 rounded-lg">
+                        <h4 className="font-bold text-lg mb-2 text-white">Преимущества Plus:</h4>
+                        <ul className="space-y-2 text-gray-300">
+                          <li className="flex items-start">
+                            <svg className="w-5 h-5 text-green-400 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Приоритет в поиске и рекомендациях
+                          </li>
+                          <li className="flex items-start">
+                            <svg className="w-5 h-5 text-green-400 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Расширенные настройки профиля
+                          </li>
+                          <li className="flex items-start">
+                            <svg className="w-5 h-5 text-green-400 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Эксклюзивные мероприятия
+                          </li>
+                        </ul>
+                      </div>
+                      
+                      <div className="flex justify-between items-center bg-gray-700 p-4 rounded-lg">
+                        <div>
+                          <p className="text-gray-300">Стоимость:</p>
+                          <p className="text-2xl font-bold text-orange-400">2,99$ <span className="text-sm text-gray-400">/ месяц</span></p>
                         </div>
-                      </>
-                    )}
-                    {showPaymentForm && subscriptionClientSecret && (
-                      <SubscriptionForm
-                        clientSecret={subscriptionClientSecret}
-                        onSuccess={handlePaymentSuccess}
-                        onError={handlePaymentError}
-                        onCancel={handlePaymentCancel}
-                      />
-                    )}
-                  </div>
-                </div>
-              )}
-            </>
+                        <button
+                          onClick={handleSubscribe}
+                          className="bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-black font-bold py-2 px-6 rounded-lg shadow transition transform hover:scale-105"
+                        >
+                          Продолжить
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+                {showPaymentForm && subscriptionClientSecret && (
+                  <SubscriptionForm
+                    clientSecret={subscriptionClientSecret}
+                    onSuccess={handlePaymentSuccess}
+                    onError={handlePaymentError}
+                    onCancel={handlePaymentCancel}
+                  />
+                )}
+              </div>
+            </div>
           )}
         </div>
 
-        {/* Друзья */}
-        <div className="bg-gray-900 p-6 rounded-2xl shadow-lg border border-orange-800">
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-orange-400">Нет друзей</h2>
-            <button className="bg-orange-500 hover:bg-orange-600 text-black px-4 py-1 rounded text-sm transition">
-              Найти друзей
-            </button>
+        {/* Встречи и друзья */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Друзья */}
+          <div className="bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-700">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-orange-400">Друзья</h2>
+              <button className="bg-orange-500 hover:bg-orange-600 text-black px-4 py-2 rounded-lg transition transform hover:scale-105 flex items-center">
+                <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                Найти
+              </button>
+            </div>
+            
+            <div className="text-center py-8">
+              <div className="mx-auto w-20 h-20 bg-gray-700 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-10 h-10 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-300 mb-2">У вас пока нет друзей</h3>
+              <p className="text-gray-400">Найдите друзей по интересам</p>
+            </div>
           </div>
-        </div>
 
-        {/* Мои встречи */}
-        <div className="bg-gray-900 p-6 rounded-2xl shadow-lg border border-orange-800">
-          <h2 className="text-lg font-semibold mb-4 text-orange-400">Мои встречи</h2>
-          
-          <div className="flex space-x-2 mb-4">
-            <button className="px-4 py-1 bg-orange-800 hover:bg-orange-700 text-orange-200 rounded-full text-sm transition">
-              Я иду
-            </button>
-            <button className="px-4 py-1 bg-orange-800 hover:bg-orange-700 text-orange-200 rounded-full text-sm transition">
-              Избранное
-            </button>
-          </div>
-          
-          <div className="text-center py-8 text-orange-300">
-            <p>У вас нет созданных встреч.</p>
-            <p className="mb-4">Создайте встречу, это легко!</p>
-            <button className="bg-orange-500 hover:bg-orange-600 text-black px-6 py-2 rounded transition" onClick={handleCreateMeeting}>
+          {/* Мои встречи */}
+          <div className="bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-700">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-orange-400">Мои встречи</h2>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setActiveMeetingTab("subscribed")}
+                  className={`px-4 py-1 rounded-full text-sm transition ${
+                    activeMeetingTab === "subscribed"
+                      ? "bg-orange-500 text-black"
+                      : "bg-gray-700 text-orange-200 hover:bg-gray-600"
+                  }`}
+                >
+                  Я иду
+                </button>
+                <button
+                  onClick={() => setActiveMeetingTab("created")}
+                  className={`px-4 py-1 rounded-full text-sm transition ${
+                    activeMeetingTab === "created"
+                      ? "bg-orange-500 text-black"
+                      : "bg-gray-700 text-orange-200 hover:bg-gray-600"
+                  }`}
+                >
+                  Созданные
+                </button>
+              </div>
+            </div>
+
+            {activeMeetingTab === "subscribed" && (
+              <div>
+                {subscribedEvents.length > 0 ? (
+                <ul className="space-y-4 max-h-60 overflow-y-auto pr-2">
+                {subscribedEvents.map((event) => (
+                  <li key={event.id} className="border border-gray-700 rounded-lg p-4 hover:bg-gray-800 transition">
+                    <Link href={`/events/${event.id}`} className="block">
+                      <h3 className="text-lg font-semibold text-orange-400">{event.title}</h3>
+                      <p className="text-gray-300">{event.description}</p>
+                      <p className="text-gray-400 text-sm">
+                        Дата: {new Date(event.date).toLocaleDateString()}
+                      </p>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="mx-auto w-20 h-20 bg-gray-700 rounded-full flex items-center justify-center mb-4">
+                      <svg className="w-10 h-10 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-300 mb-2">Вы не подписаны ни на одну встречу</h3>
+                    <p className="text-gray-400 mb-4">Подпишитесь на встречи по своим интересам</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeMeetingTab === "created" && (
+              <div>
+                {createdEvents.length > 0 ? (
+                  <ul className="space-y-4 max-h-60 overflow-y-auto pr-2">
+                    {createdEvents.map((event) => (
+                      <li key={event.id} className="border border-gray-700 rounded-lg p-4">
+                         <Link href={`/events/${event.id}`} className="block">
+                        <h3 className="text-lg font-semibold text-orange-400">{event.title}</h3>
+                        <p className="text-gray-300">{event.description}</p>
+                        <p className="text-gray-400 text-sm">Дата: {new Date(event.date).toLocaleDateString()}</p>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="mx-auto w-20 h-20 bg-gray-700 rounded-full flex items-center justify-center mb-4">
+                      <svg className="w-10 h-10 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-300 mb-2">Вы не создали ни одной встречи</h3>
+                    <p className="text-gray-400 mb-4">Создайте встречи по своим интересам</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button 
+              className="bg-orange-500 hover:bg-orange-600 text-black px-6 py-2 rounded-lg transition transform hover:scale-105 flex items-center mx-auto mt-4"
+              onClick={handleCreateMeeting}
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
               Создать встречу
             </button>
           </div>
         </div>
 
         {/* Настройки профиля */}
-        <details className="bg-gray-900 p-6 rounded-2xl shadow-lg border border-orange-800">
-          <summary className="text-lg font-semibold cursor-pointer text-orange-400 hover:text-orange-300">
-            Настройки профиля
-          </summary>
+        <div className="bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-700">
+          <h2 className="text-xl font-semibold mb-4 text-orange-400">Настройки профиля</h2>
           
-          <div className="mt-4 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium mb-1 text-orange-300">Имя пользователя</label>
+              <label className="block text-sm font-medium mb-2 text-gray-300">Имя пользователя</label>
               <input
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-3 py-2 border border-orange-700 rounded bg-gray-800 text-orange-100"
+                className="w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-700 text-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1 text-orange-300">Город</label>
+              <label className="block text-sm font-medium mb-2 text-gray-300">Город</label>
               <input
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                className="w-full px-3 py-2 border border-orange-700 rounded bg-gray-800 text-orange-100"
+                className="w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-700 text-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1 text-orange-300">Возраст</label>
+              <label className="block text-sm font-medium mb-2 text-gray-300">Возраст</label>
               <input
                 type="number"
                 value={age}
                 onChange={(e) => setAge(e.target.value)}
-                className="w-full px-3 py-2 border border-orange-700 rounded bg-gray-800 text-orange-100"
+                className="w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-700 text-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
             </div>
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1 text-orange-300">Ссылка на аватар</label>
-              <div className="flex space-x-2">
-                <input
-                  value={avatarUrl}
-                  onChange={(e) => setAvatarUrl(e.target.value)}
-                  className="flex-1 px-3 py-2 border border-orange-700 rounded bg-gray-800 text-orange-100"
-                  placeholder="https://..."
-                />
-                <button
-                  onClick={updateAvatarByUrl}
-                  className="bg-orange-500 hover:bg-orange-600 text-black px-4 py-2 rounded transition"
-                >
-                  Сохранить
-                </button>
-              </div>
-            </div>
-
+          <div className="mt-6 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
             <button
               onClick={updateProfile}
-              className="mt-4 w-full bg-orange-500 hover:bg-orange-600 text-black py-2 rounded transition"
+              className="bg-orange-500 hover:bg-orange-600 text-black py-3 px-6 rounded-lg transition transform hover:scale-105 flex-1 flex items-center justify-center"
             >
-              Сохранить изменения профиля
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+              </svg>
+              Сохранить изменения
             </button>
 
             <button
               onClick={handleLogout}
-              className="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded transition"
+              className="bg-gray-700 hover:bg-gray-600 text-orange-400 py-3 px-6 rounded-lg transition transform hover:scale-105 flex-1 flex items-center justify-center"
             >
-              Выйти из аккаунта
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              Выйти
             </button>
           </div>
-        </details>
+        </div>
       </div>
     </div>
   );
