@@ -14,6 +14,9 @@ module.exports = {
         },
         black: '#000000',
       },
+      fontFamily:{
+        sans: ['var(--font-montserrat)', 'sans-serif'],
+      }
     },
   },
   plugins: [],

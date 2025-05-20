@@ -1,6 +1,15 @@
 import './globals.css'
 import { ReactNode } from 'react'
 
+import { Montserrat } from 'next/font/google'
+
+const montserrat = Montserrat({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-montserrat',
+  display: 'swap',
+})
+
 export const metadata = {
   title: 'My PWA App',
   description: 'Best app ever',

@@ -52,7 +52,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-gray-900/80 backdrop-blur-sm border border-gray-700 rounded-2xl shadow-xl overflow-hidden">
-        {/* Декоративный элемент */}
+
         <div className="h-2 bg-gradient-to-r from-orange-500 to-pink-600"></div>
         
         <div className="p-8">
@@ -64,7 +64,7 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Поле email */}
+    
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Email
@@ -99,7 +99,6 @@ export default function LoginPage() {
               )}
             </div>
 
-            {/* Поле пароля */}
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label className="block text-sm font-medium text-gray-300">
@@ -149,7 +148,7 @@ export default function LoginPage() {
               )}
             </div>
 
-            {/* Сообщение об ошибке */}
+      
             {error && (
               <div className="p-4 bg-red-900/50 border border-red-700/50 rounded-lg flex items-start">
                 <div className="flex-shrink-0 text-red-400 mt-0.5 mr-3">
@@ -161,7 +160,6 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Кнопка входа */}
             <button
               type="submit"
               disabled={loading}

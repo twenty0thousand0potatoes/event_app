@@ -10,13 +10,12 @@ interface YandexMapProps {
 export default function YandexMap({ initialLatitude, initialLongitude, onLocationSelect }: YandexMapProps) {
   const mapRef = useRef<HTMLDivElement>(null)
   const [loaded, setLoaded] = useState(false)
-  const placemarksRef = useRef<any[]>([]) // Теперь храним массив меток
+  const placemarksRef = useRef<any[]>([]) 
   const mapInstanceRef = useRef<any>(null)
 
-  // Координаты для случайных меток в районе Минска
+
   const getRandomMinskCoords = () => {
     const minskCenter = { lat: 53.9006, lon: 27.5590 }
-    // Случайное смещение в радиусе ~10 км
     const offset = () => (Math.random() - 0.5) * 0.2
     return [minskCenter.lat + offset(), minskCenter.lon + offset()]
   }
@@ -41,9 +40,8 @@ export default function YandexMap({ initialLatitude, initialLongitude, onLocatio
 
         mapInstanceRef.current = map
 
-        // Если координаты не переданы, создаем несколько случайных меток
         if (!initialLatitude || !initialLongitude) {
-          const placemarksCount = 5 // Количество меток
+          const placemarksCount = 5 
           
           for (let i = 0; i < placemarksCount; i++) {
             const coords = getRandomMinskCoords()
@@ -55,7 +53,7 @@ export default function YandexMap({ initialLatitude, initialLongitude, onLocatio
               },
               {
                 preset: 'islands#blueIcon',
-                draggable: !!onLocationSelect, // Делаем перетаскиваемыми, если есть обработчик
+                draggable: !!onLocationSelect, 
               }
             )
 
@@ -70,7 +68,7 @@ export default function YandexMap({ initialLatitude, initialLongitude, onLocatio
             placemarksRef.current.push(placemark)
           }
         } else {
-          // Если координаты переданы, создаем одну метку
+    
           const placemark = new ymaps.Placemark(
             [initialLatitude, initialLongitude],
             {
@@ -94,7 +92,7 @@ export default function YandexMap({ initialLatitude, initialLongitude, onLocatio
           placemarksRef.current.push(placemark)
         }
 
-        // Обработчик клика по карте (добавляет новую метку)
+
         if (!initialLatitude || !initialLongitude) {
           map.events.add('click', function (e: any) {
             const coords = e.get('coords')

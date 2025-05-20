@@ -105,7 +105,6 @@ export class EventService {
       throw new NotFoundException('Пользователь не найден');
     }
 
-    // Check if user already subscribed
     const existingSubscription = await subscriptionRepository.findOne({
       where: { user: { id: userId }, event: { id: eventId } },
     });
@@ -113,7 +112,6 @@ export class EventService {
       throw new ConflictException('Вы уже подписаны на это мероприятие');
     }
 
-    // Check if max participants reached
     if (event.subscriptions.length >= event.maxParticipants) {
       throw new ForbiddenException('Свободных мест нет');
     }
@@ -144,17 +142,13 @@ export class EventService {
         throw new NotFoundException('Мероприятие не найдено');
       }
 
-      // Update event fields except photos
       const { photos, ...eventData } = updateEventDto;
       Object.assign(event, eventData);
 
-      // Remove existing photos if photos are provided in update
       if (photos) {
         if (event.photos && event.photos.length > 0) {
           await queryRunner.manager.getRepository(EventPhoto).remove(event.photos);
         }
-
-        // Add new photos
         const photoEntities = photos.map(url => {
           const photo = new EventPhoto();
           photo.url = url;
@@ -163,7 +157,7 @@ export class EventService {
         });
         await queryRunner.manager.getRepository(EventPhoto).save(photoEntities);
 
-        // Update mainPhotoUrl if photos exist
+
         if (photos.length > 0) {
           event.mainPhotoUrl = photos[0];
         } else {
@@ -233,7 +227,6 @@ export class EventService {
         });
         await eventPhotoRepository.save(photoEntities);
 
-        // Set mainPhotoUrl to first photo URL if not set
         if (!savedEvent.mainPhotoUrl) {
           savedEvent.mainPhotoUrl = photos[0];
           await eventRepository.save(savedEvent);

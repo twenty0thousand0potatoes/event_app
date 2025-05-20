@@ -18,6 +18,10 @@ const schema = yup.object({
     .string()
     .min(6, 'Пароль должен содержать минимум 6 символов')
     .required('Пароль обязателен'),
+  confirmPassword: yup
+    .string()
+    .oneOf([yup.ref('password')], 'Пароли должны совпадать')
+    .required('Подтверждение пароля обязательно'),
 })
 
 const fadeIn = {
@@ -40,14 +44,14 @@ export default function RegisterPage() {
     mode: 'onBlur',
   })
 
-  const onSubmit = async (data: { email: string; password: string }) => {
+  const onSubmit = async (data: { email: string; password: string; confirmPassword: string }) => {
     setLoading(true)
     setServerError(null)
 
     try {
       const response = await axios.post(
         'http://localhost:3000/auth/signup',
-        data,
+        { email: data.email, password: data.password },
         { withCredentials: true }
       )
 
@@ -73,7 +77,6 @@ export default function RegisterPage() {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md bg-gray-900/80 backdrop-blur-sm border border-gray-700 rounded-2xl shadow-xl overflow-hidden"
       >
-        {/* Декоративная полоса */}
         <div className="h-2 bg-gradient-to-r from-orange-500 to-pink-600"></div>
         
         <div className="p-8">
@@ -117,7 +120,6 @@ export default function RegisterPage() {
               variants={fadeIn}
               transition={{ delay: 0.4 }}
             >
-              {/* Поле email */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Email
@@ -152,7 +154,6 @@ export default function RegisterPage() {
                 )}
               </div>
 
-              {/* Поле пароля */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Пароль
@@ -183,6 +184,40 @@ export default function RegisterPage() {
                       <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                     </svg>
                     {errors.password.message}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Подтверждение пароля
+                </label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    {...register('confirmPassword')}
+                    className={`w-full px-4 py-3 bg-gray-800/50 border ${
+                      errors.confirmPassword 
+                        ? 'border-red-500/50 focus:ring-red-500/30 focus:border-red-500' 
+                        : 'border-gray-700 focus:ring-orange-500/30 focus:border-orange-500'
+                    } rounded-lg text-gray-100 placeholder-gray-500 transition-all duration-200`}
+                    placeholder="••••••••"
+                    disabled={loading}
+                  />
+                  {errors.confirmPassword && (
+                    <div className="absolute right-3 top-3.5 text-red-400">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                {errors.confirmPassword && (
+                  <div className="mt-2 flex items-center text-red-400 text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {errors.confirmPassword.message}
                   </div>
                 )}
               </div>

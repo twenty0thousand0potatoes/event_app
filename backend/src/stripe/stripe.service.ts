@@ -25,7 +25,6 @@ export class StripeService {
       customer: customerId,
       items: [{ price: priceId }],
       payment_behavior: 'default_incomplete',
-      // Убрано expand, так как payment_intent может отсутствовать
       // expand: ['latest_invoice.payment_intent'],
     });
   }
