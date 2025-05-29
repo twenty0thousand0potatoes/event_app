@@ -22,7 +22,7 @@ export class AuthController {
       secure: false, 
       sameSite: 'lax',
       maxAge: 5 * 60 * 1000, 
-      domain: 'localhost'
+      domain:'localhost',
     });
   
     return { message: 'Код подтверждения отправлен на email' };
@@ -36,13 +36,14 @@ export class AuthController {
   ): Promise<{ message: string }> {
     try {
       const accessToken = await this.authService.SignIn(authCredentialsDto);
+      
 
       res.cookie('access_token', accessToken, {  
         httpOnly: true,
         secure: false, // true в проде (HTTPS)
         sameSite: 'lax',
         maxAge: 7 * 24 * 60 * 60 * 1000, 
-        domain: 'localhost', 
+        domain:'localhost',
       });
 
       return { message: 'Login successful' };
@@ -59,7 +60,7 @@ export class AuthController {
       secure: false, // true в проде (HTTPS)
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, 
-      domain: 'localhost', 
+      domain:'localhost',
     });
     
     return { message: 'Logged out successfully' };
@@ -86,7 +87,7 @@ export class AuthController {
       secure: false,
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      domain: 'localhost'
+      domain:'localhost',
     });
   
     return { message: 'Email успешно подтвержден' };
@@ -114,7 +115,7 @@ async requestPasswordReset(
     httpOnly: true,
     sameSite: 'lax',
     maxAge: 5 * 60 * 1000,
-    domain: 'localhost',
+    domain:'localhost',
   });
 
   return { message: 'Код сброса отправлен на email' };
@@ -133,7 +134,7 @@ async verifyResetCode(
     httpOnly: true,
     sameSite: 'lax',
     maxAge: 5 * 60 * 1000,
-    domain: 'localhost',
+    domain:'localhost',
   });
 
   return { message: 'Код подтвержден' };

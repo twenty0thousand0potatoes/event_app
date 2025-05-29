@@ -26,6 +26,8 @@ export class EventController {
     @Query('maxPrice') maxPrice?: string,
     @Query('sortBy') sortBy?: 'date' | 'price',
     @Query('sortOrder') sortOrder?: 'asc' | 'desc',
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
   ): Promise<Event[]> {
     const filters = {
       type,
@@ -34,7 +36,9 @@ export class EventController {
       sortBy,
       sortOrder,
     };
-    return this.eventService.findEvents(filters);
+    const limitNum = limit ? parseInt(limit) : undefined;
+    const offsetNum = offset ? parseInt(offset) : undefined;
+    return this.eventService.findEvents(filters, limitNum, offsetNum);
   }
 
   @Get('mine')
@@ -44,6 +48,13 @@ export class EventController {
     const createdEvents = await this.eventService.getEventsCreatedByUser(user.sub);
     const subscribedEvents = await this.eventService.getEventsSubscribedByUser(user.sub);
     return { createdEvents, subscribedEvents };
+  }
+
+  @Get('mine/visited')
+  @UseGuards(JwtAuthGuard)
+  async getMyVisitedEvents(@Req() req: Request): Promise<Event[]> {
+    const user = req.user as any;
+    return this.eventService.getEndedSubscribedEvents(user.sub);
   }
 
   @Get(':id')

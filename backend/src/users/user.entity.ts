@@ -9,6 +9,8 @@ import { Roles } from 'src/auth/roles.enum';
 import { UserHobby } from '../hobby/user-hobby.entity';
 import { Event } from 'src/event/event.entity';
 import { EventSubscription } from 'src/event/event-subscription.entity';
+import { RoleChangeRequest } from './role-change-request.entity';
+import { Notification } from '../notifications/notifications.entity';
 
 @Entity()
 @Unique(['username'])
@@ -52,6 +54,12 @@ export class User {
 
   @OneToMany(() => EventSubscription, subscription => subscription.user)
   eventSubscriptions: EventSubscription[];
+
+  @OneToMany(() => RoleChangeRequest, (request) => request.user)
+  roleChangeRequests: RoleChangeRequest[];
+
+  @OneToMany(() => Notification, notification => notification.user)
+  notifications: Notification[];
 
   @Column({ default: false })
   isPlusSubscriber: boolean;

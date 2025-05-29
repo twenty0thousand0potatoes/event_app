@@ -2,6 +2,29 @@ import { Injectable } from '@nestjs/common';
 import { DataSource, SelectQueryBuilder } from 'typeorm';
 import { User } from '../users/user.entity';
 import { Event } from '../event/event.entity';
+import { RoleChangeRequest, RoleChangeRequestStatus } from '../users/role-change-request.entity';
+
+interface UserFilters {
+  search?: string;
+  city?: string;
+  role?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  page?: number;
+  limit?: number;
+}
+
+interface EventFilters {
+  search?: string;
+  type?: string;
+  dateFrom?: Date;
+  dateTo?: Date;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  page?: number;
+  limit?: number;
+}
+
 
 interface UserFilters {
   search?: string;
@@ -94,4 +117,42 @@ export class ModeratorService {
 
     return { data, total };
   }
+
+  async getPendingRoleChangeRequests(): Promise<RoleChangeRequest[]> {
+    const repo = this.dataSource.getRepository(RoleChangeRequest);
+    return repo.find({
+      where: { status: RoleChangeRequestStatus.PENDING },
+      relations: ['user'],
+      order: { createdAt: 'ASC' },
+    });
+  }
+
+  async updateRoleChangeRequestStatus(
+    requestId: number,
+    status: RoleChangeRequestStatus.APPROVED | RoleChangeRequestStatus.REJECTED,
+    moderatorComment?: string,
+  ): Promise<RoleChangeRequest> {
+    const repo = this.dataSource.getRepository(RoleChangeRequest);
+    const request = await repo.findOne({
+      where: { id: requestId },
+      relations: ['user'],
+    });
+    if (!request) {
+      throw new Error('Role change request not found');
+    }
+    if (request.status !== RoleChangeRequestStatus.PENDING) {
+      throw new Error('Request already processed');
+    }
+    request.status = status;
+    request.moderatorComment = moderatorComment || null;
+    await repo.save(request);
+
+    if (status === RoleChangeRequestStatus.APPROVED) {
+      request.user.role = request.requestedRole;
+      const userRepo = this.dataSource.getRepository(User);
+      await userRepo.save(request.user);
+    }
+    return request;
+  }
 }
+ 

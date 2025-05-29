@@ -21,6 +21,9 @@ import { ModeratorModule } from './moderator/moderator.module';
 import { EventPhoto } from './event/event-photo.entity';
 import { EventSubscriber } from 'typeorm';
 import { EventSubscription } from './event/event-subscription.entity';
+import { RoleChangeRequest } from './users/role-change-request.entity';
+import { NotificationsModule } from './notifications/notifications.module';
+import { Notification } from './notifications/notifications.entity';
 
 @Module({
   imports: [
@@ -36,7 +39,7 @@ import { EventSubscription } from './event/event-subscription.entity';
       username: 'postgres',
       password: 'password',
       database: 'test_app',
-      entities: [User, Event, Hobby, UserHobby, EventPhoto, EventSubscription],
+      entities: [User, Event, Hobby, UserHobby, EventPhoto, EventSubscription, RoleChangeRequest, Notification],
       synchronize: true,
     }),
     RedisModule,
@@ -48,6 +51,7 @@ import { EventSubscription } from './event/event-subscription.entity';
     HobbyModule,
     EventModule,
     ModeratorModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

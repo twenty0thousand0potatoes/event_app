@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, ReactNode } from "react";
 import axios from "axios";
 import EventCard from "../../components/EventCard";
 import Link from "next/link";
-import Sidebar from "../../components/Sidebar"; // Import the Sidebar component
+import Sidebar from "../../components/Sidebar"; 
 
 type Organizer = {
   id: number;
@@ -37,46 +37,58 @@ export default function EventsPage() {
   const [loading, setLoading] = useState(true);
   const [showSubscribed, setShowSubscribed] = useState(false);
   const [showCreated, setShowCreated] = useState(false);
+  const [offset, setOffset] = useState(0);
+  const limit = 10;
+  const [hasMore, setHasMore] = useState(true);
+
+  const fetchEvents = async (reset = false) => {
+    setLoading(true);
+    try {
+      if (showSubscribed || showCreated) {
+        const res = await axios.get("http://localhost:3000/events/mine", { withCredentials: true });
+        let filteredEvents: Event[] = [];
+        if (showSubscribed && showCreated) {
+          const combined = [...res.data.subscribedEvents, ...res.data.createdEvents];
+          const uniqueMap = new Map<number, Event>();
+          combined.forEach((ev: Event) => {
+            uniqueMap.set(ev.id, ev);
+          });
+          filteredEvents = Array.from(uniqueMap.values());
+        } else if (showSubscribed) {
+          filteredEvents = res.data.subscribedEvents;
+        } else if (showCreated) {
+          filteredEvents = res.data.createdEvents;
+        }
+        setEvents(filteredEvents);
+        setHasMore(false);
+      } else {
+        const query = new URLSearchParams();
+        if (filters.type) query.append("type", filters.type);
+        if (filters.minPrice) query.append("minPrice", filters.minPrice.toString());
+        if (filters.maxPrice) query.append("maxPrice", filters.maxPrice.toString());
+        if (filters.sortBy) query.append("sortBy", filters.sortBy);
+        if (filters.sortOrder) query.append("sortOrder", filters.sortOrder);
+        query.append("limit", limit.toString());
+        query.append("offset", (reset ? 0 : offset).toString());
+
+        const res = await axios.get("http://localhost:3000/events", { params: query, withCredentials: true });
+        if (reset) {
+          setEvents(res.data);
+        } else {
+          setEvents(prev => [...prev, ...res.data]);
+        }
+        setHasMore(res.data.length === limit);
+        setOffset(prev => (reset ? limit : prev + limit));
+      }
+    } catch (error) {
+      console.error("Error fetching events:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchEvents = async () => {
-      setLoading(true);
-      try {
-        if (showSubscribed || showCreated) {
-          const res = await axios.get("http://localhost:3000/events/mine", { withCredentials: true });
-          let filteredEvents: Event[] = [];
-          if (showSubscribed && showCreated) {
-            const combined = [...res.data.subscribedEvents, ...res.data.createdEvents];
-            const uniqueMap = new Map<number, Event>();
-            combined.forEach((ev: Event) => {
-              uniqueMap.set(ev.id, ev);
-            });
-            filteredEvents = Array.from(uniqueMap.values());
-          } else if (showSubscribed) {
-            filteredEvents = res.data.subscribedEvents;
-          } else if (showCreated) {
-            filteredEvents = res.data.createdEvents;
-          }
-          setEvents(filteredEvents);
-        } else {
-          const query = new URLSearchParams();
-          if (filters.type) query.append("type", filters.type);
-          if (filters.minPrice) query.append("minPrice", filters.minPrice.toString());
-          if (filters.maxPrice) query.append("maxPrice", filters.maxPrice.toString());
-          if (filters.sortBy) query.append("sortBy", filters.sortBy);
-          if (filters.sortOrder) query.append("sortOrder", filters.sortOrder);
-
-          const res = await axios.get("http://localhost:3000/events", { params: query, withCredentials: true });
-          setEvents(res.data);
-        }
-      } catch (error) {
-        console.error("Error fetching events:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchEvents();
+    fetchEvents(true);
   }, [filters, showSubscribed, showCreated]);
 
   const filteredEvents = useMemo(() => {
@@ -273,7 +285,7 @@ export default function EventsPage() {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <div className="max-h-[600px] overflow-y-auto grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {filteredEvents.map((event) => (
                     <EventCard
                       key={event.id}
@@ -291,6 +303,16 @@ export default function EventsPage() {
                       }}
                     />
                   ))}
+                </div>
+              )}
+              {hasMore && !loading && (
+                <div className="flex justify-center mt-6">
+                  <button
+                    className="px-6 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 transition"
+                    onClick={() => fetchEvents()}
+                  >
+                    Показать ещё
+                  </button>
                 </div>
               )}
             </div>

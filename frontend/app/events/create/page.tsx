@@ -3,26 +3,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
-import YandexMap from "../../../components/YandexMap";
+import LocationInputExample from "./location-feature-snippet";
 import { Toaster, toast } from "react-hot-toast";
-import Link from "next/link";
-import Sidebar from "../../../components/Sidebar"; // Import the Sidebar component
-
-type Organizer = {
-  id: number;
-  username: string;
-};
-
-type Event = {
-  id: number;
-  title: string;
-  description: string;
-  date: string;
-  location: string;
-  type: string;
-  price: number;
-  creator?: Organizer;
-};
+import Sidebar from "../../../components/Sidebar";
 
 export default function CreateEventPage() {
   const router = useRouter();
@@ -30,12 +13,14 @@ export default function CreateEventPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [date, setDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [maxParticipants, setMaxParticipants] = useState(50);
   const [type, setType] = useState("regular");
   const [price, setPrice] = useState(0);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
+  const [location, setLocation] = useState("");
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -178,12 +163,14 @@ export default function CreateEventPage() {
           title,
           description,
           date,
+          endDate,
           maxParticipants,
           type,
           price,
           photos: photoUrls,
           latitude,
           longitude,
+          location,
         },
         { withCredentials: true }
       );
@@ -239,12 +226,22 @@ export default function CreateEventPage() {
               </div>
               
               <div>
-                <label className="block mb-2 font-medium">Дата и время *</label>
+                <label className="block mb-2 font-medium">Дата и время начала *</label>
                 <input
                   type="datetime-local"
                   required
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
+                  className="w-full p-3 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-gray-700 text-white"
+                />
+              </div>
+              
+              <div>
+                <label className="block mb-2 font-medium">Дата и время окончания</label>
+                <input
+                  type="datetime-local"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
                   className="w-full p-3 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-gray-700 text-white"
                 />
               </div>
@@ -303,23 +300,14 @@ export default function CreateEventPage() {
             
             <div>
               <label className="block mb-2 font-medium">Место проведения *</label>
-              <div className="border border-gray-600 rounded-lg overflow-hidden h-64">
-                <YandexMap 
-                  onLocationSelect={(lat, lon) => { 
-                    setLatitude(lat); 
-                    setLongitude(lon); 
-                    toast.success("Место выбрано");
-                  }} 
-                />
-              </div>
-              {latitude && longitude && (
-                <p className="mt-2 text-gray-400">
-                  Выбранные координаты: {latitude.toFixed(6)}, {longitude.toFixed(6)}
-                </p>
-              )}
-              {!latitude && !longitude && (
-                <p className="mt-2 text-orange-400">Пожалуйста, выберите место на карте</p>
-              )}
+              <LocationInputExample
+                location={location}
+                setLocation={setLocation}
+                latitude={latitude}
+                setLatitude={setLatitude}
+                longitude={longitude}
+                setLongitude={setLongitude}
+              />
             </div>
             
             <div>

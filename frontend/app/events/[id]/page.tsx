@@ -123,7 +123,9 @@ export default function EventDetailPage() {
   const isCreator = Number(user?.sub) === Number(event.creator?.id);
   const availableSeats =
     event.maxParticipants - (event.subscriptions?.length || 0);
-  const isButtonDisabled = availableSeats <= 0 || subscribing || isGoing;
+  const now = new Date();
+  const eventEnded = event.endDate ? new Date(event.endDate) <= now : false;
+  const isButtonDisabled = availableSeats <= 0 || subscribing || isGoing || eventEnded;
 
   return (
     <div className="flex min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
@@ -212,7 +214,7 @@ export default function EventDetailPage() {
                   <div className="flex items-start space-x-4">
                     <FiCalendar className="text-orange-400 text-xl mt-1" />
                     <div>
-                      <h3 className="text-gray-400 text-sm">Дата и время</h3>
+                      <h3 className="text-gray-400 text-sm">Дата и время начала</h3>
                       <p className="text-white">
                         {new Date(event.date).toLocaleString("ru-RU", {
                           day: "numeric",
@@ -224,6 +226,24 @@ export default function EventDetailPage() {
                       </p>
                     </div>
                   </div>
+
+                  {event.endDate && (
+                    <div className="flex items-start space-x-4">
+                      <FiCalendar className="text-orange-400 text-xl mt-1" />
+                      <div>
+                        <h3 className="text-gray-400 text-sm">Дата и время окончания</h3>
+                        <p className="text-white">
+                          {new Date(event.endDate).toLocaleString("ru-RU", {
+                            day: "numeric",
+                            month: "long",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex items-start space-x-4">
                     <FiUsers className="text-orange-400 text-xl mt-1" />
@@ -273,17 +293,20 @@ export default function EventDetailPage() {
               </div>
 
               {event.latitude && event.longitude && (
-                <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-xl shadow-lg">
-                  <h2 className="text-2xl font-semibold mb-4 text-orange-400">
-                    Место проведения
-                  </h2>
-                  <div className="h-64 rounded-lg overflow-hidden">
-                    <YandexMap
-                      initialLatitude={event.latitude}
-                      initialLongitude={event.longitude}
-                    />
-                  </div>
+              <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-xl shadow-lg">
+                <h2 className="text-2xl font-semibold mb-4 text-orange-400">
+                  Место проведения
+                </h2>
+                <div className="h-64 rounded-lg overflow-hidden">
+                  <YandexMap
+                    initialLatitude={event.latitude}
+                    initialLongitude={event.longitude}
+                  />
                 </div>
+                {event.location && (
+                  <p className="mt-2 text-gray-400">{event.location}</p>
+                )}
+              </div>
               )}
             </div>
           </div>
@@ -317,6 +340,11 @@ export default function EventDetailPage() {
               <p className="text-gray-400 text-sm">
                 Свободных мест: {availableSeats}
               </p>
+              {eventEnded && (
+                <p className="text-red-500 text-sm font-semibold">
+                  Мероприятие завершено
+                </p>
+              )}
             </div>
           )}
         </div>

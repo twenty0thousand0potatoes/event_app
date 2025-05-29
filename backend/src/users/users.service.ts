@@ -7,6 +7,8 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from './user.entity';
+
+import { RoleChangeRequest, RoleChangeRequestStatus } from './role-change-request.entity';
 import { In, Repository } from 'typeorm';
 import { Roles } from 'src/auth/roles.enum';
 import { UpdateUsernameDto } from 'src/auth/dto/update-username.dto';
@@ -23,6 +25,8 @@ export class UsersService {
     private hobbyRepository: Repository<Hobby>,
     @InjectRepository(UserHobby)
     private userHobbyRepository: Repository<UserHobby>,
+    @InjectRepository(RoleChangeRequest)
+    private roleChangeRequestRepository: Repository<RoleChangeRequest>,
   ) {}
 
   public async createUser(email: string, password: string): Promise<User> {
@@ -44,6 +48,64 @@ export class UsersService {
     });
 
     return this.usersRepository.save(user);
+  }
+
+  async createRoleChangeRequest(userId: number, requestedRole: Roles, filePath: string) {
+    const user = await this.findById(userId);
+    const existingRequest = await this.roleChangeRequestRepository.findOne({
+      where: { user: { id: userId }, status: RoleChangeRequestStatus.PENDING },
+    });
+    if (existingRequest) {
+      throw new ConflictException('У вас уже есть ожидающий запрос на смену роли');
+    }
+    const request = this.roleChangeRequestRepository.create({
+      user,
+      requestedRole,
+      filePath,
+      status: RoleChangeRequestStatus.PENDING,
+    });
+    return this.roleChangeRequestRepository.save(request);
+  }
+
+  async getRoleChangeRequestsByUser(userId: number) {
+    return this.roleChangeRequestRepository.find({
+      where: { user: { id: userId } },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async getPendingRoleChangeRequests() {
+    return this.roleChangeRequestRepository.find({
+      where: { status: RoleChangeRequestStatus.PENDING },
+      relations: ['user'],
+      order: { createdAt: 'ASC' },
+    });
+  }
+
+  async updateRoleChangeRequestStatus(
+    requestId: number,
+    status: RoleChangeRequestStatus.APPROVED | RoleChangeRequestStatus.REJECTED,
+    moderatorComment?: string,
+  ) {
+    const request = await this.roleChangeRequestRepository.findOne({
+      where: { id: requestId },
+      relations: ['user'],
+    });
+    if (!request) {
+      throw new NotFoundException('Запрос на смену роли не найден');
+    }
+    if (request.status !== RoleChangeRequestStatus.PENDING) {
+      throw new ConflictException('Запрос уже обработан');
+    }
+    request.status = status;
+    request.moderatorComment = moderatorComment || null;
+    await this.roleChangeRequestRepository.save(request);
+
+    if (status === RoleChangeRequestStatus.APPROVED) {
+      request.user.role = request.requestedRole;
+      await this.usersRepository.save(request.user);
+    }
+    return request;
   }
 
   async activatePlusSubscription(userId: number, expiresAt: Date): Promise<User> {

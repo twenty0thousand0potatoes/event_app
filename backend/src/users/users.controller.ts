@@ -43,6 +43,37 @@ export class UsersController {
     };
   }
 
+  @Patch('me/role-change-request/upload')
+  @UseInterceptors(FileInterceptor('file', {
+    storage: diskStorage({
+      destination: './uploads/role-change-requests',
+      filename: (_req, file, cb) => {
+        const uniqueSuffix = Date.now() + extname(file.originalname);
+        cb(null, `${file.fieldname}-${uniqueSuffix}`);
+      },
+    }),
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+  }))
+  async uploadRoleChangeRequestFile(
+    @Req() req,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new ForbiddenException('Файл не загружен');
+    }
+    return { filePath: file.filename };
+  }
+
+  @Post('me/role-change-request')
+  async createRoleChangeRequest(
+    @Req() req,
+    @Body('requestedRole') requestedRole: string,
+    @Body('filePath') filePath: string,
+  ) {
+    const userId = req.user.sub;
+    return this.usersService.createRoleChangeRequest(userId, requestedRole as any, filePath);
+  }
+
   @Post('me/subscribe')
   async createSubscription(@Request() req) {
     const userId = req.user.sub;

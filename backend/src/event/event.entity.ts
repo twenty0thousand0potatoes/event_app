@@ -16,6 +16,9 @@ export class Event {
 
   @Column({ type: 'timestamp' })
   date: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
+  endDate?: Date;
  
   @Column({ type: 'int', default: 50 })
   maxParticipants: number;
@@ -34,6 +37,9 @@ export class Event {
 
   @Column({ type: 'float', nullable: true })
   longitude?: number;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  location?: string;
 
   @ManyToOne(() => User, user => user.events, { eager: true })
   creator: User;

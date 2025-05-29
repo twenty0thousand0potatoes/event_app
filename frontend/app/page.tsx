@@ -278,7 +278,7 @@ export default function Home() {
             transition={{ duration: 0.5 }}
             className="rounded-2xl overflow-hidden border border-gray-700/50 shadow-xl backdrop-blur-sm"
           >
-            <YandexMap />
+          <YandexMap showRandomPlacemarks={true} />
           </motion.div>
         </div>
       </section>

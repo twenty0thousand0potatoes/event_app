@@ -5,9 +5,10 @@ interface YandexMapProps {
   initialLatitude?: number
   initialLongitude?: number
   onLocationSelect?: (latitude: number, longitude: number) => void
+  showRandomPlacemarks?: boolean
 }
 
-export default function YandexMap({ initialLatitude, initialLongitude, onLocationSelect }: YandexMapProps) {
+export default function YandexMap({ initialLatitude, initialLongitude, onLocationSelect, showRandomPlacemarks }: YandexMapProps) {
   const mapRef = useRef<HTMLDivElement>(null)
   const [loaded, setLoaded] = useState(false)
   const placemarksRef = useRef<any[]>([]) 
@@ -40,7 +41,29 @@ export default function YandexMap({ initialLatitude, initialLongitude, onLocatio
 
         mapInstanceRef.current = map
 
-        if (!initialLatitude || !initialLongitude) {
+        if (initialLatitude && initialLongitude) {
+          const placemark = new ymaps.Placemark(
+            [initialLatitude, initialLongitude],
+            {
+              balloonContent: '<strong>Место проведения мероприятия</strong>',
+              hintContent: 'Место проведения',
+            },
+            {
+              preset: 'islands#blueIcon',
+              draggable: !!onLocationSelect,
+            }
+          )
+
+          if (onLocationSelect) {
+            placemark.events.add('dragend', function (e: any) {
+              const coords = e.get('target').geometry.getCoordinates()
+              onLocationSelect(coords[0], coords[1])
+            })
+          }
+
+          map.geoObjects.add(placemark)
+          placemarksRef.current.push(placemark)
+        } else if (showRandomPlacemarks) {
           const placemarksCount = 5 
           
           for (let i = 0; i < placemarksCount; i++) {
@@ -67,61 +90,35 @@ export default function YandexMap({ initialLatitude, initialLongitude, onLocatio
             map.geoObjects.add(placemark)
             placemarksRef.current.push(placemark)
           }
-        } else {
-    
-          const placemark = new ymaps.Placemark(
-            [initialLatitude, initialLongitude],
-            {
-              balloonContent: '<strong>Место проведения мероприятия</strong>',
-              hintContent: 'Место проведения',
-            },
-            {
-              preset: 'islands#blueIcon',
-              draggable: !!onLocationSelect,
-            }
-          )
-
-          if (onLocationSelect) {
-            placemark.events.add('dragend', function (e: any) {
-              const coords = e.get('target').geometry.getCoordinates()
-              onLocationSelect(coords[0], coords[1])
-            })
-          }
-
-          map.geoObjects.add(placemark)
-          placemarksRef.current.push(placemark)
         }
 
-
         if (!initialLatitude || !initialLongitude) {
-          map.events.add('click', function (e: any) {
-            const coords = e.get('coords')
-            const placemark = new ymaps.Placemark(
-              coords,
-              {
-                balloonContent: '<strong>Новая метка</strong>',
-                hintContent: 'Новая метка',
-              },
-              {
-                preset: 'islands#redIcon',
-                draggable: !!onLocationSelect,
-              }
-            )
+          if (onLocationSelect) {
+            map.events.add('click', function (e: any) {
+              const coords = e.get('coords')
+              const placemark = new ymaps.Placemark(
+                coords,
+                {
+                  balloonContent: '<strong>Новая метка</strong>',
+                  hintContent: 'Новая метка',
+                },
+                {
+                  preset: 'islands#redIcon',
+                  draggable: !!onLocationSelect,
+                }
+              )
 
-            if (onLocationSelect) {
               placemark.events.add('dragend', function (e: any) {
                 const coords = e.get('target').geometry.getCoordinates()
                 onLocationSelect(coords[0], coords[1])
               })
-            }
 
-            map.geoObjects.add(placemark)
-            placemarksRef.current.push(placemark)
-            
-            if (onLocationSelect) {
+              map.geoObjects.add(placemark)
+              placemarksRef.current.push(placemark)
+
               onLocationSelect(coords[0], coords[1])
-            }
-          })
+            })
+          }
         }
 
         setLoaded(true)

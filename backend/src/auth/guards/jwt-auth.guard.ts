@@ -23,8 +23,8 @@ export class JwtAuthGuard implements CanActivate {
       const payload = await this.jwtService.verifyAsync(token, {
         secret: process.env.secretKey || 'your-secret-key',
       });
+            request.user = payload;
 
-      request['user'] = payload;
     } catch (err) {
       throw new UnauthorizedException('Недействительный токен');
     }
@@ -33,11 +33,17 @@ export class JwtAuthGuard implements CanActivate {
   }
 
   private extractTokenFromCookie(request: Request): string | undefined {
-
-    if (request.cookies?.access_token.access_token == undefined) {
-      return request.cookies?.access_token.accessToken;
-    } 
-      return request.cookies?.access_token;
-    
+    const token = request.cookies?.access_token;
+    if (typeof token === 'string') {
+      return token;
+    }
+    return token?.access_token || token?.accessToken || undefined;
   }
+
+  // private extractTokenFromCookie(request: Request): string | undefined {
+  //   if (request.cookies?.access_token.access_token == undefined) {
+  //     return request.cookies?.access_token.accessToken;
+  //   }
+  //   return request.cookies?.access_token;
+  // }
 }

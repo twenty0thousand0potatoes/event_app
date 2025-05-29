@@ -27,11 +27,15 @@ export class EventService {
     private dataSource: DataSource,
   ) {}
 
-  async findEvents(filters: EventFilters): Promise<Event[]> {
+  async findEvents(filters: EventFilters, limit?: number, offset?: number): Promise<Event[]> {
     const eventRepository = this.dataSource.getRepository(Event);
     let query: SelectQueryBuilder<Event> = eventRepository.createQueryBuilder('event');
 
     query = query.leftJoinAndSelect('event.creator', 'creator');
+
+    // Filter out events that have ended
+    const now = new Date();
+    query = query.andWhere('(event.endDate IS NULL OR event.endDate > :now)', { now });
 
     if (filters.type) {
       query = query.andWhere('event.type = :type', { type: filters.type });
@@ -47,7 +51,30 @@ export class EventService {
       query = query.orderBy(`event.${filters.sortBy}`, order);
     }
 
+    if (limit !== undefined) {
+      query = query.take(limit);
+    }
+    if (offset !== undefined) {
+      query = query.skip(offset);
+    }
+
     return query.getMany();
+  }
+
+  async getEndedSubscribedEvents(userId: number): Promise<Event[]> {
+    const eventSubscriptionRepository = this.dataSource.getRepository(EventSubscription);
+    const now = new Date();
+
+    const subscriptions = await eventSubscriptionRepository
+      .createQueryBuilder('subscription')
+      .leftJoinAndSelect('subscription.event', 'event')
+      .leftJoinAndSelect('event.creator', 'creator')
+      .leftJoinAndSelect('event.photos', 'photos')
+      .where('subscription.user = :userId', { userId })
+      .andWhere('event.endDate IS NOT NULL AND event.endDate <= :now', { now })
+      .getMany();
+
+    return subscriptions.map(sub => sub.event);
   }
 
   async getEventsCreatedByUser(userId: number): Promise<Event[]> {
@@ -256,10 +283,12 @@ export class EventService {
 
   async getAllEventsWithCreators(): Promise<Event[]> {
     const eventRepository = this.dataSource.getRepository(Event);
+    const now = new Date();
     return eventRepository
       .createQueryBuilder('event')
       .leftJoinAndSelect('event.creator', 'creator')
       .leftJoinAndSelect('event.photos', 'photos')
+      .where('(event.endDate IS NULL OR event.endDate > :now)', { now })
       .getMany();
   }
 }
